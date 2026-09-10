@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4択クイズ</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .choice-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(5px);
+        }
+        #result-message {
+            display: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body class="bg-light pt-5">
+    <div class="container">
+        <div class="card shadow-sm mx-auto" style="max-width: 600px;">
+            <div class="card-body p-4">
+                <!-- ヘッダー領域 -->
+                <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+                    <h2 class="card-title m-0 pt-1">確認クイズ</h2>
+                    <div class="text-end">
+                        <span id="progress-badge" class="badge bg-secondary mb-2 d-block"></span>
+                        <button id="reset-btn" class="btn btn-sm btn-outline-danger" style="font-size: 0.8rem;">🔄 リセット</button>
+                    </div>
+                </div>
+                
+                <!-- クイズエリア -->
+                <div id="quiz-container">
+                    <div class="mb-2">
+                        <span id="category-badge" class="badge bg-primary px-3 py-2 rounded-pill shadow-sm"></span>
+                    </div>
+                    <p id="question-text" class="fs-5 mb-4 fw-bold">読み込み中...</p>
+                    
+                    <div id="choices-container">
+                        <!-- 選択肢がJavaScriptで生成されます -->
+                    </div>
+                    
+                    <!-- 結果表示・解説エリア -->
+                    <div id="result-container" class="mt-4 text-center">
+                        <p id="result-message" class="mb-2"></p>
+                        
+                        <div id="explanation-container" class="card bg-light text-start p-3 mb-3 d-none border-0">
+                            <h6 class="fw-bold mb-2">💡 解説</h6>
+                            <p id="explanation-text" class="small mb-2 text-secondary"></p>
+                            <div>
+                                <a id="explanation-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
+                                    詳細ページを開く ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- アクションボタンエリア -->
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button id="review-later-btn" class="btn btn-outline-warning d-none">⭐ 後で見直す</button>
+                            <button id="next-btn" class="btn btn-primary px-4 d-none">次の問題へ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完了画面 -->
+                <div id="completion-container" class="text-center d-none py-4">
+                    <h3 class="text-success mb-3">全問クリア！</h3>
+                    <p class="text-muted mb-4">お疲れ様でした。</p>
+                    
+                    <!-- 一発正解数の表示パネル -->
+                    <div class="card bg-light border-0 mb-4 mx-auto shadow-sm" style="max-width: 300px;">
+                        <div class="card-body">
+                            <h5 class="card-title text-secondary fs-6">一発正解数</h5>
+                            <p class="display-4 mb-0 text-primary fw-bold">
+                                <span id="first-try-count-display">0</span><span class="fs-4 text-muted fw-normal"> / <span id="total-questions-display">0</span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ボタンエリア -->
+                    <div class="d-grid gap-2 col-10 mx-auto">
+                        <button id="retry-missed-btn" onclick="retryMissedQuestions()" class="btn btn-danger fw-bold d-none">
+                            ⚠️ 不正解だった問題に再チャレンジ
+                        </button>
+                        <button id="retry-review-btn" onclick="retryReviewQuestions()" class="btn btn-warning text-dark fw-bold d-none">
+                            ⭐ 「後で見直す」問題にチャレンジ
+                        </button>
+                        <button onclick="initQuiz(true)" class="btn btn-outline-primary">
+                            最初からすべてやり直す
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const originalQuizData = [
+            {
+                category: "情報理論",
+                question: "世界の主要な言語で使われている文字を、一つの文字コード体系で取り扱うための規格",
+                choices: ["ASCII", "EUC", "SJIS(シフトJIS)", "Unicode"],
+                correctIndex: 3,
+                explanation: "Unicode(ユニコード)とは、日本語を含めて世界で使われているほとんどの文字を収録した文字コードです。",
+                explanationUrl: "https://wa3.i-3-i.info/word11422.html"
+            },
+            {
+                category: "情報理論",
+                question: "個別的な事実や事例を観察し、そこから共通する一般的な法則や原理を導き出す推論の方法",
+                choices: ["演繹推論", "帰納推論", "仮説推論", "類推"],
+                correctIndex: 1,
+                explanation: "「帰納推論」とは、多くの事例から共通のルールを抽出し、結論を導くものです。（例：マグロも、タイも、アジもエラ呼吸である。⇒すべての魚はエラ呼吸である）。",
+                explanationUrl: "https://wa3.i-3-i.info/word110125.html"
+            },
+            {
+                category: "情報理論",
+                question: "①普遍的な事実、②個別の事実から、③結論を導くもの",
+                choices: ["演繹推論", "帰納推論", "仮説推論", "類推"],
+                correctIndex: 0,
+                explanation: "演繹推論は、①「すべての人間は死ぬ」②「ソクラテスは人間である」⇒ゆえに「ソクラテスは死ぬ」という三段論法が代表例",
+                explanationUrl: "https://wa3.i-3-i.info/diff857reasoning.html"
+            },
+            {
+                category: "情報理論",
+                question: "ディープラーニングなどで用いられる、脳神経系の仕組みをコンピュータで模したモデル",
+                choices: ["遺伝的アルゴリズム", "アクティブラーニング", "AI", "ニューラルネットワーク"],
+                correctIndex: 3,
+                explanation: "「ニューラルネットワーク」とは、人間の脳にある神経細胞(ニューロン)を、数式的なモデルとして表したもの。",
+                explanationUrl: "https://zero2one.jp/learningblog/neural-network-for-beginners/?srsltid=AfmBOopAn04TX8XvblB3_7Ag5l2lCvwRQ6SqXH7irroWLIvvB8HEYXh4"
+            },
+            {
+                category: "情報理論",
+                question: "動物が写っている大量の画像から犬や猫などの特徴を自動的に抽出して、動物の種類を識別できるようにするAIの技術。",
+                choices: ["e-ラーニング", "アクティブラーニング", "アダプティブラーニング", "ディープラーニング"],
+                correctIndex: 3,
+                explanation: "「ディープラーニング」とは、ニューラルネットワークを用いて、コンピューターが大量のデータから自動的に特徴を学び取る機械学習の手法です。画像認識などに使われます。",
+                explanationUrl: "https://www.ntt.com/bizon/glossary/j-s/deep-learning.html"
+            },
+            {
+                category: "プロセッサ",
+                question: "3次元画像処理の高速化や、動画をなめらかにするなどの機能をもつ、描画処理のためのハードウェア。",
+                choices: ["CGI", "GPU", "GUI", "UPS"],
+                correctIndex: 1,
+                explanation: "「GPU」とは、3Dグラフィックスなどの画像処理を行う際に必要となる計算を、CPU に代わって高速に処理する装置。",
+                explanationUrl: "https://wa3.i-3-i.info/diff170cpu.html"
+            },
+            {
+                category: "",
+                question: "次のうち、電源供給が途絶えると記憶内容が消える揮発性のメモリの組み合わせは？",
+                choices: ["DRAMとROM", "DRAMとSRAM", "ROMとSSD", "SRAMとSSD"],
+                correctIndex: 1,
+                explanation: "DRAMはメインメモリ(主記憶)に使われる。SRAMは高価だが高速なのでキャッシュに使われる。どちらも電源を落とすとデータが消えます。",
+                explanationUrl: "https://wa3.i-3-i.info/diff469ram.html"
+            },
+            {
+                category: "",
+                question: "CPU内部にある高速小容量の記憶装置であり、演算や制御に関わるデータを一時的に記憶するもの",
+                choices: ["GPU", "SSD", "主記憶", "レジスタ"],
+                correctIndex: 3,
+                explanation: "「レジスタ」とは、CPU内部にある記憶領域のことで、その速度はCPUの速度と等しい。",
+                explanationUrl: "https://wa3.i-3-i.info/word1518.html"
+            },
+            {
+                category: "",
+                question: "交通系ICカードやスマートフォンによる電子決済などで広く利用されている、数センチメートル程度の至近距離でデータ通信を行うための国際規格はどれか。",
+                choices: ["NFC", "IrDA", "Wi-Fi", "Bluetooth"],
+                correctIndex: 0,
+                explanation: "「NFC」とは、SuicaやPASMOなどを改札で「かざす」技術の名称です。「Near Field Communication」の略称で考ましょう。",
+                explanationUrl: "https://wa3.i-3-i.info/word15869.html"
+            },
+            {
+                category: "",
+                question: "PCに接続されている周辺機器を制御、操作するためのソフトウェアは？",
+                choices: ["API", "デバイスドライバ", "ファームウェア", "プラグアンドプレイ"],
+                correctIndex: 1,
+                explanation: "「デバイスドライバ」とは、パソコンに接続された周辺機器（デバイス）を、OSが認識して適切に動かすために必要なソフトウェアのことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word11402.html"
+            },
+            {
+                category: "",
+                question: "IoTシステムにおいて、コンピュータからの制御信号（電気信号）を受け取り、モーターの回転やバルブの開閉といった物理的な動作（力学的な運動）に変換する装置はどれか",
+                choices: ["A/Dコンバータ", "アクチュエータ", "センサ", "デバイスドライバ"],
+                correctIndex: 1,
+                explanation: "「アクチュエーター」とは、入力された電気信号などのエネルギーを、物理的な運動に変換する装置のことです。ロボットの関節を動かすモーターや、自動ドアの開閉機構などがこれに該当します。",
+                explanationUrl: "https://wa3.i-3-i.info/word19586.html"
+            },
+            {
+                category: "",
+                question: "IoTデバイスの増加によるIoTサーバの負荷を軽減するために、IoTデバイスに近いところで可能な限りのデータ処理を行うこと。",
+                choices: ["クラウドコンピューティング", "グリッドコンピューティング", "エッジコンピューティング", "量子コンピューティング"],
+                correctIndex: 2,
+                explanation: "「エッジコンピューティング」とは、データが生成される端末の近く（ネットワークの末端）でデータ処理を行うことで、中央サーバへの通信量を減らし、リアルタイム性を高める技術です",
+                explanationUrl: "https://wa3.i-3-i.info/word18144.html"
+            },
+            {
+                category: "",
+                question: "IoTデバイスへの電力供給でも用いられ、周りの環境から光や熱(温度差)などの微小なエネルギーを集めて、電力に変換する技術。",
+                choices: ["PLC", "PoE", "エネルギーハーベスティング", "スマートグリッド"],
+                correctIndex: 2,
+                explanation: "「エネルギーハーベスティング」とは、光や熱などの微小なエネルギーを電力に変換する技術です。",
+                explanationUrl: "https://wa3.i-3-i.info/word19108.html"
+            },
+            {
+                category: "",
+                question: "Webサービスなどにおいて、複数のコンピュータを連携させて全体として一つのコンピュータであるかのように動作させる技法はどれか。",
+                choices: ["クラスタリング", "スプーリング", "バッファリング", "ミラーリング"],
+                correctIndex: 0,
+                explanation: "「クラスタリング」とは、複数のコンピュータが集まって1つのコンピュータのように振る舞うことです。スーパーコンピュータもこの形態で構成されています。",
+                explanationUrl: "https://wa3.i-3-i.info/word12491.html"
+            },
+            {
+                category: "",
+                question: "一定期間又は一定量のデータを集め、一括して処理する方式は？",
+                choices: ["リアルタイム処理", "バッチ処理", "対話型処理", "分散処理"],
+                correctIndex: 1,
+                explanation: "「バッチ処理」とは、一定期間データを集めて、夜間などどこかのタイミングでまとめて処理する方式です。",
+                explanationUrl: "https://wa3.i-3-i.info/word11215.html"
+            },
+            {
+                category: "",
+                question: "クライアントサーバシステムにおいて、クライアント側には必要最低限の機能しかもたせず、サーバ側で、アプリケーションソフトウェアやデータを集中管理するシステムはどれか。",
+                choices: ["シンクライアントシステム", "対話型処理システム", "バッチ処理システム", "ピアツーピアシステム"],
+                correctIndex: 0,
+                explanation: "「シンクライアントシステム」とは、処理の ほとんどをサーバ側でやり、クライアント側では最低限の処理しかさせないようになっているシステムのことです（シン=thin=薄っぺらい）",
+                explanationUrl: "https://wa3.i-3-i.info/word111777.html"
+            },
+            {
+                category: "",
+                question: "標準的な処理を実際にコンピュータ上で動作させて,処理に掛かった時間などの情報から性能を評価する。",
+                choices: ["ブラックボックステスト", "ストレステスト", "リグレッションテスト", "ベンチマークテスト"],
+                correctIndex: 3,
+                explanation: "「ベンチマークテスト」とは、コンピュータの性能測定です。",
+                explanationUrl: "https://wa3.i-3-i.info/word1328.html"
+            },
+            {
+                category: "",
+                question: "コンピュータシステムの導入の際、初期費用だけでなく、日々の維持や将来的な廃棄までの総費用で考えることを何と呼ぶか。",
+                choices: ["TCO", "BCP", "ROI", "SLA"],
+                correctIndex: 0,
+                explanation: "「TCO」(Total Cost Ownership)とは、コンピュータの導入から廃棄までの総費用のことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word17165.html"
+            },
+            {
+                category: "",
+                question: "同じ処理を行うシステムを二重に用意し、処理結果を照合することで処理の正しさを確認する方式であり、一方に故障が発生したら、故障したシステムを切り離して処理を続行する。",
+                choices: ["デュアルシステム", "デュプレックスシステム", "クラスタシステム", "シンプレックスシステム"],
+                correctIndex: 0,
+                explanation: "「デュアルシステム」とは、同じ物を2台用意して、その2台に同じ処理をさせることです。（Dual=二重）",
+                explanationUrl: "https://wa3.i-3-i.info/word16099.html"
+            },
+            {
+                category: "",
+                question: "入力画面で数値を入力すべきところに誤って英字を入力したらエラーメッセージが表示され、再入力を求められた。このような工夫は？",
+                choices: ["フールプルーフ", "フェールソフト", "フォールトトレランス", "ロールバック"],
+                correctIndex: 0,
+                explanation: "「フールプルーフ」とは、変な操作はできないようにしておくことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word16922.html"
+            },
+            {
+                category: "",
+                question: "障害に備えるために、4台のHDDを使い RAID5 を構成する。1台のHDDの容量が1Tバイトのとき、実効データ容量はおよそ何バイトか。",
+                choices: ["2T", "3T", "4T", "5T"],
+                correctIndex: 1,
+                explanation: "「RAID5」は、1台分の容量がパリティ情報に使われます。よって、1台少ない容量が実効データ容量（実際にデータを保存できる容量）になります。",
+                explanationUrl: "https://wa3.i-3-i.info/word11454.html"
+            },
+            {
+                category: "",
+                question: "Webサイトからファイルをダウンロードしながら、その間に表計算ソフトでデータ処理を行うというように、1台のPCで、複数のアプリケーションプログラムを少しずつ互い違いに並行して実行するOSの機能を何と呼ぶか。",
+                choices: ["仮想現実", "デュアルコア", "デュアルシステム", "マルチタスク"],
+                correctIndex: 3,
+                explanation: "「マルチタスク」とは、いろんな処理を並行して実行することです。",
+                explanationUrl: "https://wa3.i-3-i.info/word11758.html"
+            },
+            {
+                category: "",
+                question: "一つのアプリケーションプログラムを複数の処理単位に分けて、それらを並列に処理すること",
+                choices: ["マルチブート", "スプーリング", "マルチスレッド", "マルチタスク"],
+                correctIndex: 2,
+                explanation: "「マルチスレッド」とは、1つのプログラムを並行に処理することです。",
+                explanationUrl: "https://wa3.i-3-i.info/word12455.html"
+            },
+            {
+                category: "",
+                question: "PCの電源を入れてから、PCが使える状態になるまでに、最初に実行されるもの",
+                choices: ["BIOSの読み込み", "OSの読み込み", "ウィルス対策ソフトの読み込み", "デバイスドライバの読み込み"],
+                correctIndex: 0,
+                explanation: "「BIOS」とは、周辺機器を制御するためのプログラムです。PCの電源を入れるとまず最初にBIOSが実行されます。",
+                explanationUrl: "https://wa3.i-3-i.info/word12418.html"
+            },
+            {
+                category: "",
+                question: "文書作成ソフトや表計算ソフトなどにおいて、一連の操作手順をあらかじめ定義しておき、実行する機能はどれか。",
+                choices: ["オートコンプリート", "ソースコード", "プラグアンドプレイ", "マクロ"],
+                correctIndex: 3,
+                explanation: "「マクロ」とは、Excelなどで使われる簡易的なプログラムのことです。",
+                explanationUrl: ""
+            },
+            {
+                category: "",
+                question: "コンピュータの電源を落とす前に補助記憶装置にメモリ上のデータをコピーしておき、起動時はハードディスクやSSDからメモリの内容を読み出すことで、保存や立ち上げに要する時間や消費電力を抑えるようにした機能",
+                choices: ["スリープ", "ミラーリング", "ハイバネーション", "スタンバイ"],
+                correctIndex: 2,
+                explanation: "「ハイバネーション」とは休止状態とも呼ばれ、やりかけの作業内容をハードディスクなどに保存する機能です。",
+                explanationUrl: "https://wa3.i-3-i.info/word1471.html"
+            },
+            {
+                category: "",
+                question: "印刷文字や手書き文字を認識し、テキストデータに変換する技術や装置",
+                choices: ["OMR", "NFC", "RFID", "OCR"],
+                correctIndex: 3,
+                explanation: "「OCR」（Optical Character Recognition）とは、紙に書かれた手書きの文字などをテキストデータに変換する技術や装置のことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word17963.html"
+            },
+            {
+                category: "",
+                question: "文化、言語、年齢の違いや、障害の有無などにかかわらず、多くの人が快適に利用できることを目指した設計",
+                choices: ["バリアフリーデザイン", "フェールセーフ", "フールプルーフ", "ユニバーサルデザイン"],
+                correctIndex: 3,
+                explanation: "「ユニバーサルデザイン」とは、すべての人が使いやすいことを目指した設計です。",
+                explanationUrl: "https://wa3.i-3-i.info/word17080.html"
+            },
+            {
+                category: "",
+                question: "情報デザインで用いられる概念であり、部屋のドアノブの形で開閉の仕方を示唆するというような、人間の適切な行動を誘発する知覚可能な手掛かりのこと。",
+                choices: ["NUI", "ウィザード", "シグニファイア", "マルチタッチ"],
+                correctIndex: 2,
+                explanation: "「シグニファイア」とは、パッと見で「あっ、これは、こうするんだな」と分かるデザインのこと。例えばドアに平らな板がついていれば押して開けるんだなと自然に分かる。",
+                explanationUrl: "https://wa3.i-3-i.info/word111286.html"
+            },
+            {
+                category: "",
+                question: "画像や文書ファイルの内容を縮小して表示したもの",
+                choices: ["アイコン", "ウォーターマーク", "サムネイル", "ピクセル"],
+                correctIndex: 2,
+                explanation: "「サムネイル」とは、画像などが縮小して表示されるプレビュー画像のことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word1559.html"
+            },
+            {
+                category: "",
+                question: "Webページの見栄えをデザインするためのものはどれか。",
+                choices: ["Cookie", "CSS", "CUI", "SSL"],
+                correctIndex: 1,
+                explanation: "「CSS」とは、Webページの色やサイズ、レイアウトなど、スタイルを指定するためのものです。見栄えのよいWebページが作成できます。",
+                explanationUrl: "https://wa3.i-3-i.info/word11298.html"
+            },
+            {
+                category: "",
+                question: "DVD-RやSDカードなどに採用され、ディジタルコンテンツを記録メディアに一度だけ複製することを許容する著作権保護技術はどれか。",
+                choices: ["AR", "CPRM", "HDMI", "MIDI"],
+                correctIndex: 1,
+                explanation: "「CPRM」は、コピーの回数を1回に制限する技術のこと！(Content Protection for Recordable Media)",
+                explanationUrl: "https://wa3.i-3-i.info/word16740.html"
+            },
+            {
+                category: "",
+                question: "多くのファイルの保存や保管のために、複数のファイルを一つにまとめること。",
+                choices: ["アーカイブ", "関係データベース", "ストライピング", "スワッピング"],
+                correctIndex: 0,
+                explanation: "「アーカイブ(archive)」とは「書庫」という意味で、複数のファイルを一つにまとめること。管理や配布などがしやすくなる。",
+                explanationUrl: "https://wa3.i-3-i.info/word1247.html"
+            },
+            {
+                category: "",
+                question: "スキャナで写真や絵などを読み込むときの解像度を表す単位",
+                choices: ["dpi", "fps", "pixel", "ppm"],
+                correctIndex: 0,
+                explanation: "「DPI(dot per inch)」は1インチの中に何ドット存在するかという、画素の密度を表します。",
+                explanationUrl: "https://wa3.i-3-i.info/word1172.html"
+            },
+            {
+                category: "",
+                question: "データを行と列から成る表形式で表すデータベースのモデルはどれか。",
+                choices: ["オブジェクトモデル", "階層モデル", "関係モデル", "ネットワークモデル"],
+                correctIndex: 2,
+                explanation: "「関係モデル」とは、SQLの授業でもある表形式のデータベースです。リレーショナルデータベースとも言います。",
+                explanationUrl: "https://wa3.i-3-i.info/word11770.html"
+            },
+            {
+                category: "",
+                question: "あるコンピュータのデータベースの内容を他のコンピュータのデータベースに複製して、両者の内容が一致するように同期させるDBMSの機能",
+                choices: ["アーカイブ", "バックアップ", "レプリケーション", "ロールバック"],
+                correctIndex: 2,
+                explanation: "「レプリケーション」とは、データベースの内容を他のシステムに複製(レプリカ)し、常に同期させることで障害時にも業務を継続できるようにする技術です。",
+                explanationUrl: "https://wa3.i-3-i.info/word12869.html"
+            },
+
+
+        ];
+
+        // 状態管理
+        let queueIndices = [];       
+        let attemptedIndices = [];   
+        let firstTryCorrectCount = 0;
+        let missedFirstTryIndices = []; 
+        let reviewLaterIndices = []; 
+        let currentQuestion = null;
+        let currentQuestionIndex = null; 
+
+        // --- Cookie操作 ---
+        const COOKIE_NAME = "quiz_progress_network01";
+
+        function saveProgressToCookie() {
+            const expires = new Date(Date.now() + 30 * 86400000).toUTCString();
+            const saveData = {
+                queue: queueIndices,
+                attempted: attemptedIndices,
+                firstTryCount: firstTryCorrectCount,
+                missedFirstTry: missedFirstTryIndices,
+                reviewLater: reviewLaterIndices
+            };
+            document.cookie = `${COOKIE_NAME}=${JSON.stringify(saveData)}; expires=${expires}; path=/`;
+        }
+
+        function loadProgressFromCookie() {
+            const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]+)`));
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed)) {
+                        return { queue: parsed, attempted: [], firstTryCount: 0, missedFirstTry: [], reviewLater: [] };
+                    }
+                    return parsed;
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${COOKIE_NAME}=; max-age=0; path=/`;
+        }
+
+        // --- DOM要素 ---
+        const progressBadge = document.getElementById("progress-badge");
+        const categoryBadge = document.getElementById("category-badge");
+        const questionText = document.getElementById("question-text");
+        const choicesContainer = document.getElementById("choices-container");
+        const resultMessage = document.getElementById("result-message");
+        const nextBtn = document.getElementById("next-btn");
+        const reviewLaterBtn = document.getElementById("review-later-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const quizContainer = document.getElementById("quiz-container");
+        
+        const completionContainer = document.getElementById("completion-container");
+        const firstTryCountDisplay = document.getElementById("first-try-count-display");
+        const totalQuestionsDisplay = document.getElementById("total-questions-display");
+        const retryMissedBtn = document.getElementById("retry-missed-btn");
+        const retryReviewBtn = document.getElementById("retry-review-btn");
+        
+        const explanationContainer = document.getElementById("explanation-container");
+        const explanationText = document.getElementById("explanation-text");
+        const explanationLink = document.getElementById("explanation-link");
+
+        // --- 初期化処理 ---
+        function initQuiz(forceReset = false) {
+            if (forceReset) {
+                clearProgressCookie();
+                queueIndices = null;
+            }
+
+            const savedData = loadProgressFromCookie();
+            const isValidSave = savedData && 
+                                Array.isArray(savedData.queue) &&
+                                savedData.queue.every(idx => idx >= 0 && idx < originalQuizData.length);
+
+            // 【変更点】savedData.queue.length > 0 の条件を削除。
+            // 残り0問（クリア状態）のデータでも有効なセーブデータとして読み込むようにしました。
+            if (!forceReset && isValidSave) {
+                queueIndices = savedData.queue;
+                attemptedIndices = savedData.attempted || [];
+                firstTryCorrectCount = savedData.firstTryCount || 0;
+                missedFirstTryIndices = savedData.missedFirstTry || [];
+                reviewLaterIndices = savedData.reviewLater || [];
+            } else {
+                queueIndices = originalQuizData.map((_, index) => index);
+                attemptedIndices = [];
+                firstTryCorrectCount = 0;
+                missedFirstTryIndices = [];
+                reviewLaterIndices = [];
+            }
+
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 不正解問題への再挑戦 ---
+        function retryMissedQuestions() {
+            queueIndices = [...missedFirstTryIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 「後で見直す」問題への再挑戦 ---
+        function retryReviewQuestions() {
+            queueIndices = [...reviewLaterIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 問題読み込み ---
+        function loadNextQuestion() {
+            if (queueIndices.length === 0) {
+                // 【変更点】クリア時に clearProgressCookie() を呼ばないようにし、クリア状態を保存する
+                saveProgressToCookie(); 
+
+                quizContainer.classList.add("d-none");
+                completionContainer.classList.remove("d-none");
+                progressBadge.textContent = "クリア！";
+                resetBtn.style.display = "none";
+                
+                const currentSessionTotal = firstTryCorrectCount + missedFirstTryIndices.length;
+                firstTryCountDisplay.textContent = firstTryCorrectCount;
+                totalQuestionsDisplay.textContent = currentSessionTotal;
+
+                if (missedFirstTryIndices.length > 0) {
+                    retryMissedBtn.classList.remove("d-none");
+                } else {
+                    retryMissedBtn.classList.add("d-none");
+                }
+
+                if (reviewLaterIndices.length > 0) {
+                    retryReviewBtn.textContent = `⭐ 「後で見直す」問題にチャレンジ (${reviewLaterIndices.length}問)`;
+                    retryReviewBtn.classList.remove("d-none");
+                } else {
+                    retryReviewBtn.classList.add("d-none");
+                }
+                
+                return;
+            }
+
+            currentQuestionIndex = queueIndices[0];
+            currentQuestion = originalQuizData[currentQuestionIndex];
+
+            progressBadge.textContent = `残り ${queueIndices.length} 問`;
+            categoryBadge.textContent = currentQuestion.category;
+            questionText.textContent = currentQuestion.question;
+            choicesContainer.innerHTML = "";
+            resultMessage.style.display = "none";
+            explanationContainer.classList.add("d-none");
+            nextBtn.classList.add("d-none");
+            reviewLaterBtn.classList.add("d-none");
+
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            } else {
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            }
+
+            currentQuestion.choices.forEach((choice, index) => {
+                const button = document.createElement("button");
+                button.textContent = choice;
+                button.className = "btn btn-outline-secondary choice-btn p-3";
+                button.onclick = () => checkAnswer(index, button);
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // --- 解答チェック ---
+        function checkAnswer(selectedIndex, clickedButton) {
+            const buttons = choicesContainer.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+
+            const answeredIndex = queueIndices.shift(); 
+            
+            const isFirstTry = !attemptedIndices.includes(answeredIndex);
+            if (isFirstTry) {
+                attemptedIndices.push(answeredIndex);
+            }
+            
+            resultMessage.style.display = "block";
+
+            if (selectedIndex === currentQuestion.correctIndex) {
+                if (isFirstTry) {
+                    firstTryCorrectCount++;
+                }
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-success", "text-white");
+                resultMessage.textContent = "⭕ 正解！";
+                resultMessage.className = "text-success mb-2";
+            } else {
+                if (isFirstTry) {
+                    missedFirstTryIndices.push(answeredIndex);
+                }
+                
+                queueIndices.push(answeredIndex);
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-danger", "text-white");
+                buttons[currentQuestion.correctIndex].classList.remove("btn-outline-secondary");
+                buttons[currentQuestion.correctIndex].classList.add("btn-success", "text-white");
+
+                resultMessage.textContent = "❌ 不正解... (後で再出題されます)";
+                resultMessage.className = "text-danger mb-2";
+            }
+
+            saveProgressToCookie();
+
+            if (currentQuestion.explanation) {
+                explanationText.textContent = currentQuestion.explanation;
+                if (currentQuestion.explanationUrl) {
+                    explanationLink.href = currentQuestion.explanationUrl;
+                    explanationLink.classList.remove("d-none");
+                } else {
+                    explanationLink.classList.add("d-none");
+                }
+                explanationContainer.classList.remove("d-none");
+            }
+
+            nextBtn.classList.remove("d-none");
+            reviewLaterBtn.classList.remove("d-none");
+        }
+
+        // --- 「後で見直す」ボタンのクリック処理（トグル機能） ---
+        reviewLaterBtn.addEventListener("click", () => {
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterIndices = reviewLaterIndices.filter(index => index !== currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            } else {
+                reviewLaterIndices.push(currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            }
+        });
+
+        // --- リセット処理 ---
+        resetBtn.addEventListener("click", () => {
+            if (confirm("これまでの解答状況をリセットして、最初からやり直しますか？")) {
+                initQuiz(true);
+            }
+        });
+
+        // イベント設定
+        nextBtn.addEventListener("click", loadNextQuestion);
+        window.onload = () => initQuiz(false);
+    </script>
+</body>
+</html>
