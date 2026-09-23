@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4択クイズ</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .choice-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(5px);
+        }
+        #result-message {
+            display: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body class="bg-light pt-5">
+    <div class="container">
+        <div class="card shadow-sm mx-auto" style="max-width: 600px;">
+            <div class="card-body p-4">
+                <!-- ヘッダー領域 -->
+                <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+                    <h2 class="card-title m-0 pt-1">確認クイズ</h2>
+                    <div class="text-end">
+                        <span id="progress-badge" class="badge bg-secondary mb-2 d-block"></span>
+                        <button id="reset-btn" class="btn btn-sm btn-outline-danger" style="font-size: 0.8rem;">🔄 リセット</button>
+                    </div>
+                </div>
+                
+                <!-- クイズエリア -->
+                <div id="quiz-container">
+                    <div class="mb-2">
+                        <span id="category-badge" class="badge bg-primary px-3 py-2 rounded-pill shadow-sm"></span>
+                    </div>
+                    <p id="question-text" class="fs-5 mb-4 fw-bold">読み込み中...</p>
+                    
+                    <div id="choices-container">
+                        <!-- 選択肢がJavaScriptで生成されます -->
+                    </div>
+                    
+                    <!-- 結果表示・解説エリア -->
+                    <div id="result-container" class="mt-4 text-center">
+                        <p id="result-message" class="mb-2"></p>
+                        
+                        <div id="explanation-container" class="card bg-light text-start p-3 mb-3 d-none border-0">
+                            <h6 class="fw-bold mb-2">💡 解説</h6>
+                            <p id="explanation-text" class="small mb-2 text-secondary"></p>
+                            <div>
+                                <a id="explanation-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
+                                    詳細ページを開く ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- アクションボタンエリア -->
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button id="review-later-btn" class="btn btn-outline-warning d-none">⭐ 後で見直す</button>
+                            <button id="next-btn" class="btn btn-primary px-4 d-none">次の問題へ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完了画面 -->
+                <div id="completion-container" class="text-center d-none py-4">
+                    <h3 class="text-success mb-3">全問クリア！</h3>
+                    <p class="text-muted mb-4">お疲れ様でした。</p>
+                    
+                    <!-- 一発正解数の表示パネル -->
+                    <div class="card bg-light border-0 mb-4 mx-auto shadow-sm" style="max-width: 300px;">
+                        <div class="card-body">
+                            <h5 class="card-title text-secondary fs-6">一発正解数</h5>
+                            <p class="display-4 mb-0 text-primary fw-bold">
+                                <span id="first-try-count-display">0</span><span class="fs-4 text-muted fw-normal"> / <span id="total-questions-display">0</span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ボタンエリア -->
+                    <div class="d-grid gap-2 col-10 mx-auto">
+                        <button id="retry-missed-btn" onclick="retryMissedQuestions()" class="btn btn-danger fw-bold d-none">
+                            ⚠️ 不正解だった問題に再チャレンジ
+                        </button>
+                        <button id="retry-review-btn" onclick="retryReviewQuestions()" class="btn btn-warning text-dark fw-bold d-none">
+                            ⭐ 「後で見直す」問題にチャレンジ
+                        </button>
+                        <button onclick="initQuiz(true)" class="btn btn-outline-primary">
+                            最初からすべてやり直す
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const originalQuizData = [
+            {
+                category: "",
+                question: "大規模な自然災害などの緊急事態が発生したときでも、企業が重要な業務を中断させないために、あらかじめ策定しておく行動計画",
+                choices: ["BCP", "BPO", "SLA", "SDGs"],
+                correctIndex: 0,
+                explanation: "「BCP」（Business Continuity Plan）とは、災害などが起こったときに、どうやって事業を続けるかの計画です。",
+                explanationUrl: "https://wa3.i-3-i.info/word12143.html"
+            },
+            {
+                category: "",
+                question: "国連が中心となり、持続可能な世界を実現するために設定した17のゴールから成る国際的な開発目標。",
+                choices: ["COP21", "SDGs", "UNESCO", "WHO"],
+                correctIndex: 1,
+                explanation: "「SDGs」(Sustainable Development Goals: 持続可能な開発目標)とは、2030年までによりよい世界を目指すための国際目標です。",
+                explanationUrl: "https://wa3.i-3-i.info/word18206.html"
+            },
+
+        ];
+
+        // 状態管理
+        let queueIndices = [];       
+        let attemptedIndices = [];   
+        let firstTryCorrectCount = 0;
+        let missedFirstTryIndices = []; 
+        let reviewLaterIndices = []; 
+        let currentQuestion = null;
+        let currentQuestionIndex = null; 
+
+        // --- Cookie操作 ---
+        const COOKIE_NAME = "quiz_progress_network01";
+
+        function saveProgressToCookie() {
+            const expires = new Date(Date.now() + 30 * 86400000).toUTCString();
+            const saveData = {
+                queue: queueIndices,
+                attempted: attemptedIndices,
+                firstTryCount: firstTryCorrectCount,
+                missedFirstTry: missedFirstTryIndices,
+                reviewLater: reviewLaterIndices
+            };
+            document.cookie = `${COOKIE_NAME}=${JSON.stringify(saveData)}; expires=${expires}; path=/`;
+        }
+
+        function loadProgressFromCookie() {
+            const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]+)`));
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed)) {
+                        return { queue: parsed, attempted: [], firstTryCount: 0, missedFirstTry: [], reviewLater: [] };
+                    }
+                    return parsed;
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${COOKIE_NAME}=; max-age=0; path=/`;
+        }
+
+        // --- DOM要素 ---
+        const progressBadge = document.getElementById("progress-badge");
+        const categoryBadge = document.getElementById("category-badge");
+        const questionText = document.getElementById("question-text");
+        const choicesContainer = document.getElementById("choices-container");
+        const resultMessage = document.getElementById("result-message");
+        const nextBtn = document.getElementById("next-btn");
+        const reviewLaterBtn = document.getElementById("review-later-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const quizContainer = document.getElementById("quiz-container");
+        
+        const completionContainer = document.getElementById("completion-container");
+        const firstTryCountDisplay = document.getElementById("first-try-count-display");
+        const totalQuestionsDisplay = document.getElementById("total-questions-display");
+        const retryMissedBtn = document.getElementById("retry-missed-btn");
+        const retryReviewBtn = document.getElementById("retry-review-btn");
+        
+        const explanationContainer = document.getElementById("explanation-container");
+        const explanationText = document.getElementById("explanation-text");
+        const explanationLink = document.getElementById("explanation-link");
+
+        // --- 初期化処理 ---
+        function initQuiz(forceReset = false) {
+            if (forceReset) {
+                clearProgressCookie();
+                queueIndices = null;
+            }
+
+            const savedData = loadProgressFromCookie();
+            const isValidSave = savedData && 
+                                Array.isArray(savedData.queue) &&
+                                savedData.queue.every(idx => idx >= 0 && idx < originalQuizData.length);
+
+            // 【変更点】savedData.queue.length > 0 の条件を削除。
+            // 残り0問（クリア状態）のデータでも有効なセーブデータとして読み込むようにしました。
+            if (!forceReset && isValidSave) {
+                queueIndices = savedData.queue;
+                attemptedIndices = savedData.attempted || [];
+                firstTryCorrectCount = savedData.firstTryCount || 0;
+                missedFirstTryIndices = savedData.missedFirstTry || [];
+                reviewLaterIndices = savedData.reviewLater || [];
+            } else {
+                queueIndices = originalQuizData.map((_, index) => index);
+                attemptedIndices = [];
+                firstTryCorrectCount = 0;
+                missedFirstTryIndices = [];
+                reviewLaterIndices = [];
+            }
+
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 不正解問題への再挑戦 ---
+        function retryMissedQuestions() {
+            queueIndices = [...missedFirstTryIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 「後で見直す」問題への再挑戦 ---
+        function retryReviewQuestions() {
+            queueIndices = [...reviewLaterIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 問題読み込み ---
+        function loadNextQuestion() {
+            if (queueIndices.length === 0) {
+                // 【変更点】クリア時に clearProgressCookie() を呼ばないようにし、クリア状態を保存する
+                saveProgressToCookie(); 
+
+                quizContainer.classList.add("d-none");
+                completionContainer.classList.remove("d-none");
+                progressBadge.textContent = "クリア！";
+                resetBtn.style.display = "none";
+                
+                const currentSessionTotal = firstTryCorrectCount + missedFirstTryIndices.length;
+                firstTryCountDisplay.textContent = firstTryCorrectCount;
+                totalQuestionsDisplay.textContent = currentSessionTotal;
+
+                if (missedFirstTryIndices.length > 0) {
+                    retryMissedBtn.classList.remove("d-none");
+                } else {
+                    retryMissedBtn.classList.add("d-none");
+                }
+
+                if (reviewLaterIndices.length > 0) {
+                    retryReviewBtn.textContent = `⭐ 「後で見直す」問題にチャレンジ (${reviewLaterIndices.length}問)`;
+                    retryReviewBtn.classList.remove("d-none");
+                } else {
+                    retryReviewBtn.classList.add("d-none");
+                }
+                
+                return;
+            }
+
+            currentQuestionIndex = queueIndices[0];
+            currentQuestion = originalQuizData[currentQuestionIndex];
+
+            progressBadge.textContent = `残り ${queueIndices.length} 問`;
+            categoryBadge.textContent = currentQuestion.category;
+            questionText.textContent = currentQuestion.question;
+            choicesContainer.innerHTML = "";
+            resultMessage.style.display = "none";
+            explanationContainer.classList.add("d-none");
+            nextBtn.classList.add("d-none");
+            reviewLaterBtn.classList.add("d-none");
+
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            } else {
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            }
+
+            currentQuestion.choices.forEach((choice, index) => {
+                const button = document.createElement("button");
+                button.textContent = choice;
+                button.className = "btn btn-outline-secondary choice-btn p-3";
+                button.onclick = () => checkAnswer(index, button);
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // --- 解答チェック ---
+        function checkAnswer(selectedIndex, clickedButton) {
+            const buttons = choicesContainer.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+
+            const answeredIndex = queueIndices.shift(); 
+            
+            const isFirstTry = !attemptedIndices.includes(answeredIndex);
+            if (isFirstTry) {
+                attemptedIndices.push(answeredIndex);
+            }
+            
+            resultMessage.style.display = "block";
+
+            if (selectedIndex === currentQuestion.correctIndex) {
+                if (isFirstTry) {
+                    firstTryCorrectCount++;
+                }
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-success", "text-white");
+                resultMessage.textContent = "⭕ 正解！";
+                resultMessage.className = "text-success mb-2";
+            } else {
+                if (isFirstTry) {
+                    missedFirstTryIndices.push(answeredIndex);
+                }
+                
+                queueIndices.push(answeredIndex);
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-danger", "text-white");
+                buttons[currentQuestion.correctIndex].classList.remove("btn-outline-secondary");
+                buttons[currentQuestion.correctIndex].classList.add("btn-success", "text-white");
+
+                resultMessage.textContent = "❌ 不正解... (後で再出題されます)";
+                resultMessage.className = "text-danger mb-2";
+            }
+
+            saveProgressToCookie();
+
+            if (currentQuestion.explanation) {
+                explanationText.textContent = currentQuestion.explanation;
+                if (currentQuestion.explanationUrl) {
+                    explanationLink.href = currentQuestion.explanationUrl;
+                    explanationLink.classList.remove("d-none");
+                } else {
+                    explanationLink.classList.add("d-none");
+                }
+                explanationContainer.classList.remove("d-none");
+            }
+
+            nextBtn.classList.remove("d-none");
+            reviewLaterBtn.classList.remove("d-none");
+        }
+
+        // --- 「後で見直す」ボタンのクリック処理（トグル機能） ---
+        reviewLaterBtn.addEventListener("click", () => {
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterIndices = reviewLaterIndices.filter(index => index !== currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            } else {
+                reviewLaterIndices.push(currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            }
+        });
+
+        // --- リセット処理 ---
+        resetBtn.addEventListener("click", () => {
+            if (confirm("これまでの解答状況をリセットして、最初からやり直しますか？")) {
+                initQuiz(true);
+            }
+        });
+
+        // イベント設定
+        nextBtn.addEventListener("click", loadNextQuestion);
+        window.onload = () => initQuiz(false);
+    </script>
+</body>
+</html>
