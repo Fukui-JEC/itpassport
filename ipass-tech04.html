@@ -103,244 +103,61 @@
 
     <script>
         const originalQuizData = [
-
-            {
-                category: "",
-                question: "画像や文書ファイルの内容を縮小して表示したもの",
-                choices: ["アイコン", "ウォーターマーク", "サムネイル", "ピクセル"],
-                correctIndex: 2,
-                explanation: "「サムネイル」とは、画像などが縮小して表示されるプレビュー画像のことです。",
-                explanationUrl: "https://wa3.i-3-i.info/word1559.html"
-            },
-            {
-                category: "",
-                question: "Webページの見栄えをデザインするためのものはどれか。",
-                choices: ["Cookie", "CSS", "CUI", "SSL"],
-                correctIndex: 1,
-                explanation: "「CSS」とは、Webページの色やサイズ、レイアウトなど、スタイルを指定するためのものです。見栄えのよいWebページが作成できます。",
-                explanationUrl: "https://wa3.i-3-i.info/word11298.html"
-            },
-            {
-                category: "",
-                question: "動画データの圧縮方式はどれか。",
-                choices: ["BMP", "GIF", "JPEG", "MPEG"],
-                correctIndex: 3,
-                explanation: "「MPEG」とは、「動画」の圧縮方式です。（MP = Moving Picture）",
-                explanationUrl: "https://wa3.i-3-i.info/word11863.html"
-            },
-            {
-                category: "",
-                question: "イラストなどに使われている、最大表示数が256色である静止画ファイルは？",
-                choices: ["GIF", "JPEG", "MIDI", "MPEG"],
-                correctIndex: 0,
-                explanation: "「GIF」とは、イラストやアイコンなどに使われる画像形式です。GIFアニメーションという動く画像も作れます。",
-                explanationUrl: "https://wa3.i-3-i.info/word1642.html"
-            },
-            {
-                category: "",
-                question: "音声データのためのファイル圧縮形式",
-                choices: ["MPEG", "MP3", "JPEG", "MIDI"],
-                correctIndex: 1,
-                explanation: "「MP3」とは、音声データの圧縮ファイルです。",
-                explanationUrl: "https://wa3.i-3-i.info/word11847.html"
-            },
-            {
-                category: "",
-                question: "拡張子「avi」のファイルは何のファイル？",
-                choices: ["音声", "静止画", "動画", "文書"],
-                correctIndex: 2,
-                explanation: "「AVI」とは、動画のファイル形式です。",
-                explanationUrl: "https://wa3.i-3-i.info/word12954.html"
-            },
-            {
-                category: "",
-                question: "DVD-RやSDカードなどに採用され、ディジタルコンテンツを記録メディアに一度だけ複製することを許容する著作権保護技術。",
-                choices: ["AR", "CPRM", "HDMI", "MIDI"],
-                correctIndex: 1,
-                explanation: "「CPRM」は、コピーの回数を1回に制限する技術のこと！(Content Protection for Recordable Media)",
-                explanationUrl: "https://wa3.i-3-i.info/word16740.html"
-            },
-            {
-                category: "",
-                question: "多くのファイルの保存や保管のために、複数のファイルを一つにまとめること。",
-                choices: ["アーカイブ", "関係データベース", "ストライピング", "スワッピング"],
-                correctIndex: 0,
-                explanation: "「アーカイブ(archive)」とは「書庫」という意味で、複数のファイルを一つにまとめること。管理や配布などがしやすくなる。",
-                explanationUrl: "https://wa3.i-3-i.info/word1247.html"
-            },
-            {
-                category: "",
-                question: "スキャナで写真や絵などを読み込むときの解像度を表す単位",
-                choices: ["dpi", "fps", "pixel", "ppm"],
-                correctIndex: 0,
-                explanation: "「DPI(dot per inch)」は1インチの中に何ドット存在するかという、画素の密度を表します。",
-                explanationUrl: "https://wa3.i-3-i.info/word1172.html"
-            },
-            {
-                category: "",
-                question: "光の三原色は？",
-                choices: ["シアン(Cyan),マゼンタ(Magenta),イエロー(Yellow)",
-                           "色相(Hue),彩度(Saturation),明度(Brightness)", 
-                           "レッド(Red),グリーン(Green),イエロー(Yellow)", 
-                           "レッド(Red),グリーン(Green),ブルー(Blue)"],
-                correctIndex: 3,
-                explanation: "「光の三原色」とは「RGB」です。「赤（Red）」「緑（Green）」「青（Blue）」。全て混ぜると「白」になります。",
-                explanationUrl: "https://wa3.i-3-i.info/word17925.html"
-            },
-            {
-                category: "",
-                question: "建物や物体などの立体物に, コンピュータグラフィックスを用いた映像などを投影する技術",
-                choices: ["バーチャルリアリティ", "プロジェクションマッピング", "ポリゴン", "デジタルサイネージ"],
-                correctIndex: 1,
-                explanation: "「プロジェクションマッピング」とは、建物などの立体物にプロジェクターで映像を映すこと。",
-                explanationUrl: "https://wa3.i-3-i.info/word19105.html"
-            },
-
             //-------------------------------------
-            //    ネットワーク
+            //    データベース
             //-------------------------------------
 
             {
-                category: "ネットワーク",
-                question: "離れた拠点間（東京支店と大阪本社など）を、通信事業者の回線を利用して結ぶ、広い範囲のネットワーク",
-                choices: ["VPN", "WAN", "LAN", "Web"],
-                correctIndex: 1,
-                explanation: "WANは「Wide Area Network」の略で、LANとLANをつないだ広い（Wideな）範囲のネットワークです。",
-                explanationUrl: "https://wa3.i-3-i.info/word1400.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "そのままでは通信できない、プロトコル（通信ルール）が異なるネットワーク同士を接続し、互いに通信ができるようにデータを変換（翻訳）して中継する役割を持つもの",
-                choices: ["スイッチングハブ", "リピータ", "ゲートウェイ", "ブリッジ"],
+                category: "データベース",
+                question: "データを行と列の表形式で表すデータベース",
+                choices: ["オブジェクト型データベース", "階層型データベース", "関係データベース", "ネットワーク型データベース"],
                 correctIndex: 2,
-                explanation: "「ゲートウェイ」とは、規格の違うネットワークを中継する機器です",
-                explanationUrl: "https://wa3.i-3-i.info/word140.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "宛先IPアドレスを見て送信先を決定するもの",
-                choices: ["ブリッジ", "スイッチングハブ", "リピーター", "ルーター"],
-                correctIndex: 3,
-                explanation: "「ルーター」は、IPアドレスを見て、パケットの行き先を振り分ける装置です。",
-                explanationUrl: "https://wa3.i-3-i.info/word1393.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "異なるメーカーの無線LAN製品同士でも通信できることを保証するブランド名",
-                choices: ["MVNO", "NFC", "Wi-Fi", "WPA2"],
-                correctIndex: 2,
-                explanation: "「Wi-Fi」とは、無線LANのブランド名です。「Wi-Fi」を名乗っている無線LANの機器同士は、異なるメーカーでもきちんと接続できます",
-                explanationUrl: "https://wa3.i-3-i.info/word1308.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "無線LANはアクセスポイントに接続して通信する。そのアクセスポイントを識別するための名前",
-                choices: ["DHCP", "IP", "MAC", "SSID"],
-                correctIndex: 3,
-                explanation: "「Denshi-AP」のようなアクセスポイントの名前を「SSID（ESSID）」と言います。",
-                explanationUrl: "https://wa3.i-3-i.info/word12083.html"
+                explanation: "「関係データベース」とは、SQLの授業でみなさんがいつも使っている表形式のデータベースです。リレーショナルデータベースとも言います。",
+                explanationUrl: "https://wa3.i-3-i.info/word15439.html"
             },
 
             {
-                category: "ネットワーク",
-                question: "無線LANにおいて、接続を要求してきた端末固有の情報を基に接続制限を行う仕組みはどれか。",
-                choices: ["ESSID", "MACアドレスフィルタリング", "VPN", "WPA2"],
-                correctIndex: 1,
-                explanation: "「MACアドレスフィルタリング」とは、接続してくる機器のMACアドレスを見て「おまえは通って良いよ」「おまえは通っちゃダメ！」を振り分ける機能のこと",
-                explanationUrl: "https://wa3.i-3-i.info/word16877.html"
+                category: "データベース",
+                question: "データベースの内容を他のコンピュータに複製して常に同期させるDBMSの機能",
+                choices: ["アーカイブ", "バックアップ", "レプリケーション", "ロールバック"],
+                correctIndex: 2,
+                explanation: "「レプリケーション」とは、データベースの内容を他のシステムに複製(レプリカ)し、常に同期させることで障害時にも業務を継続できるようにする技術です。",
+                explanationUrl: "https://wa3.i-3-i.info/word12869.html"
             },
             {
-                category: "ネットワーク",
-                question: "数十kmまでの広い範囲で無線通信が可能な広域性と、省電力性を備えた通信技術",
-                choices: ["BLE", "LPWA", "MDM", "MVNO"],
-                correctIndex: 1,
-                explanation: "「LPWA」（Low Power Wide Area）とは、通信速度は遅いものの、低電力で広範囲をカバーできる通信技術です。",
-                explanationUrl: "https://wa3.i-3-i.info/word17650.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "Bluetoothの省電力版で、通信距離は短いが、ボタン電池一つで半年から数年動作が可能なもの",
-                choices: ["BLE", "IrDA", "NFC", "PLC"],
+                category: "データベース",
+                question: "データベースのトランザクション処理において、一連の処理がすべて正常に完了したときに、その更新結果をデータベースに確定させる操作はどれか。",
+                choices: ["コミット", "チェックポイント", "排他処理", "ロールバック"],
                 correctIndex: 0,
-                explanation: "「BLE」（Bluetooth Low Energy）とは、Bluetoothの省電力版です。",
-                explanationUrl: "https://wa3.i-3-i.info/word13276.html"
+                explanation: "「コミット」とはデータベースの更新内容を「確定」すること",
+                explanationUrl: "https://wa3.i-3-i.info/word141.html"
             },
             {
-                category: "ネットワーク",
-                question: "IoTサーバの負荷を軽減するために、IoTデバイスに近いところで可能な限りデータ処理をする技術",
-                choices: ["エッジコンピューティング", "クラウドコンピューティング", "グリッドコンピューティング", "量子コンピューティング"],
-                correctIndex: 0,
-                explanation: "「エッジコンピューティング」（Edge=端）とは、データが生成される現場（端末）のすぐ近くでデータ処理や分析を行う仕組みのことです。サーバーやネットワークの負荷が軽減されます。",
-                explanationUrl: "https://wa3.i-3-i.info/word18144.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "ネットワークを介して通信するために定められた約束事",
-                choices: ["インタフェース", "トポロジー", "ドメイン", "プロトコル"],
-                correctIndex: 3,
-                explanation: "「プロトコル」とは、通信に関するルールやお約束事のことです。メーカーやOSが異なるコンピュータ同士でも正しく通信できるように、「このルールにしたがって、やり取りしようね」とお約束（プロトコル）を決めています。",
-                explanationUrl: "https://wa3.i-3-i.info/word18526.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "音声データをパケット化し、インターネットを介した音声通話を行う技術",
-                choices: ["MVNO", "NFC", "NTP", "VoIP"],
-                correctIndex: 3,
-                explanation: "「VoIP」とは電話の技術で、音声データをパケット化し、インターネットを介してリアルタイムに音声通話を行います。",
-                explanationUrl: "https://wa3.i-3-i.info/word12103.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "コンピュータ内で動いている「特定のプログラムやサービス」を識別するために使用される、0 から 65535 までの数字",
-                choices: ["サブネットマスク", "デフォルトゲートウェイ", "MACアドレス", "ポート番号"],
-                correctIndex: 3,
-                explanation: "「ポート番号」とは、特定のプログラムやサービスを識別する番号です。たとえば、80番ならWebサイトの閲覧（HTTP）、25番ならメール送信になります。IPアドレスが家の住所だとすると、ポート番号は「その建物のどの部屋か」を表すイメージです。",
-                explanationUrl: "https://wa3.i-3-i.info/word171.html"
-            },
-            {
-                category: "ネットワーク",
-                question: "家庭や会社などの内部ネットワーク（LAN）の中だけで使用されるIPアドレス",
-                choices: ["グローバルIPアドレス", "サブネットマスク", "プライベートIPアドレス", "MACアドレス"],
+                category: "データベース",
+                question: "データベースのトランザクション処理において、異常が発生した際に、処理する前の状態に復旧させる操作はどれか。",
+                choices: ["コミット", "排他処理", "ロールバック", "チェックポイント"],
                 correctIndex: 2,
-                explanation: "「プライベートIPアドレス」とは、企業や学校、家庭内など閉じたネットワーク（LAN）の中だけで使えるIPアドレスです。一方、インターネット上ではグローバルIPアドレスを使用します。",
-                explanationUrl: "https://wa3.i-3-i.info/word11977.html"
+                explanation: "「ロールバック」とは、データベースを「処理する前の状態に戻す」こと。",
+                explanationUrl: "https://wa3.i-3-i.info/word143.html"
             },
 
-            {
-                category: "ネットワーク",
-                question: "jec.ac.jp や yahoo.co.jp のような、コンピュータやネットワークなどを識別する名前",
-                choices: ["DNS", "MACアドレス", "URL", "ドメイン名"],
-                correctIndex: 3,
-                explanation: "「ドメイン名」とは、コンピュータやネットワークなどを識別する名前です。ちなみに、ドメイン名からIPアドレスに変換する仕組みをDNS（Domain Name System）といいます。",
-                explanationUrl: "https://wa3.i-3-i.info/word1286.html"
-            },
+            //-------------------------------------
+            //    セキュリティ
+            //-------------------------------------
 
             {
-                category: "ネットワーク",
-                question: "内部ネットワーク内のパソコンの代わりに、インターネット上のWebサーバへアクセスする役割を持つサーバ",
-                choices: ["DNSサーバー", "NTPサーバー", "ストリーミングサーバー", "プロキシサーバー"],
-                correctIndex: 3,
-                explanation: "「プロキシサーバー」（プロキシ＝代理）とは、ホームページを見るときに「代わりに」ホームページにアクセスしてくれるコンピュータです",
-                explanationUrl: "https://wa3.i-3-i.info/word11414.html"
+                category: "セキュリティ",
+                question: "人間の心理的な隙や行動のミスにつけ込んで機密情報を盗み出す手口",
+                choices: ["SQLインジェクション", "ソーシャルエンジニアリング", "ゼロデイ攻撃", "辞書攻撃"],
+                correctIndex: 1,
+                explanation: "「ソーシャルエンジニアリング」とは、コンピュータを使わず、人間の心理的な隙や行動のミスにつけ込んでパスワードなどの秘密情報を盗み出す手法です。",
+                explanationUrl: "https://wa3.i-3-i.info/word1231.html"
             },
 
-            {
-                category: "ネットワーク",
-                question: "自動車などの移動体に通信システムを搭載し、位置情報や走行データをリアルタイムでやり取りして様々なサービスを提供する仕組み",
-                choices: ["アクチュエータ", "テレワーク", "スマートメーター", "テレマティクス"],
-                correctIndex: 3,
-                explanation: "「テレマティクス」とは、自動車などにくっつけた通信機能を使って行うサービスです。代表的な例がカーナビで、カーナビの通信機能で渋滞情報や天気情報をリアルタイムで取得し、運転者に情報を提供します。",
-                explanationUrl: "https://wa3.i-3-i.info/word110407.html"
-            },
 
-            {
-                category: "ネットワーク",
-                question: "自身では無線通信回線設備を保有せず、NTTやKDDI, ソフトバンクなどの回線を間借りして、通信サービスを提供する事業者",
-                choices: ["ISP", "MNP", "MVNO", "OSS"],
-                correctIndex: 2,
-                explanation: "「MVNO」とは、自社で基地局や通信回線を持たず、大手通信事業者（MNO）から回線を借り受けて、格安スマホやSIMカードなどの通信サービスを提供する事業者のことです",
-                explanationUrl: "https://wa3.i-3-i.info/word16082.html"
-            },
+
+
+
         ];
 
         // 状態管理
