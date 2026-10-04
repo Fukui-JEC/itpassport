@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4択クイズ</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .choice-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(5px);
+        }
+        #result-message {
+            display: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body class="bg-light pt-5">
+    <div class="container">
+        <div class="card shadow-sm mx-auto" style="max-width: 600px;">
+            <div class="card-body p-4">
+                <!-- ヘッダー領域 -->
+                <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+                    <h2 class="card-title m-0 pt-1">確認クイズ</h2>
+                    <div class="text-end">
+                        <span id="progress-badge" class="badge bg-secondary mb-2 d-block"></span>
+                        <button id="reset-btn" class="btn btn-sm btn-outline-danger" style="font-size: 0.8rem;">🔄 リセット</button>
+                    </div>
+                </div>
+                
+                <!-- クイズエリア -->
+                <div id="quiz-container">
+                    <div class="mb-2">
+                        <span id="category-badge" class="badge bg-primary px-3 py-2 rounded-pill shadow-sm"></span>
+                    </div>
+                    <p id="question-text" class="fs-5 mb-4 fw-bold">読み込み中...</p>
+                    
+                    <div id="choices-container">
+                        <!-- 選択肢がJavaScriptで生成されます -->
+                    </div>
+                    
+                    <!-- 結果表示・解説エリア -->
+                    <div id="result-container" class="mt-4 text-center">
+                        <p id="result-message" class="mb-2"></p>
+                        
+                        <div id="explanation-container" class="card bg-light text-start p-3 mb-3 d-none border-0">
+                            <h6 class="fw-bold mb-2">💡 解説</h6>
+                            <p id="explanation-text" class="small mb-2 text-secondary"></p>
+                            <div>
+                                <a id="explanation-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
+                                    詳細ページを開く ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- アクションボタンエリア -->
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button id="review-later-btn" class="btn btn-outline-warning d-none">⭐ 後で見直す</button>
+                            <button id="next-btn" class="btn btn-primary px-4 d-none">次の問題へ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完了画面 -->
+                <div id="completion-container" class="text-center d-none py-4">
+                    <h3 class="text-success mb-3">全問クリア！</h3>
+                    <p class="text-muted mb-4">お疲れ様でした。</p>
+                    
+                    <!-- 一発正解数の表示パネル -->
+                    <div class="card bg-light border-0 mb-4 mx-auto shadow-sm" style="max-width: 300px;">
+                        <div class="card-body">
+                            <h5 class="card-title text-secondary fs-6">一発正解数</h5>
+                            <p class="display-4 mb-0 text-primary fw-bold">
+                                <span id="first-try-count-display">0</span><span class="fs-4 text-muted fw-normal"> / <span id="total-questions-display">0</span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ボタンエリア -->
+                    <div class="d-grid gap-2 col-10 mx-auto">
+                        <button id="retry-missed-btn" onclick="retryMissedQuestions()" class="btn btn-danger fw-bold d-none">
+                            ⚠️ 不正解だった問題に再チャレンジ
+                        </button>
+                        <button id="retry-review-btn" onclick="retryReviewQuestions()" class="btn btn-warning text-dark fw-bold d-none">
+                            ⭐ 「後で見直す」問題にチャレンジ
+                        </button>
+                        <button onclick="initQuiz(true)" class="btn btn-outline-primary">
+                            最初からすべてやり直す
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const originalQuizData = [
+            //-------------------------------------
+            //    セキュリティ
+            //-------------------------------------
+
+            {
+                category: "セキュリティ",
+                question: "ITの技術を使うのではなく、人間の心理的な隙を利用して機密情報を盗み出す手法。背中からパスワードを盗み見たり、ゴミ箱をあさったり廃棄されたデータを修復するなどがある。",
+                choices: ["ブルートフォース攻撃", "ソーシャルエンジニアリング", "SQLインジェクション", "ゼロデイ攻撃"],
+                correctIndex: 1,
+                explanation: "「ソーシャルエンジニアリング」は、ITを使わず、人間の心理的な隙をついて不正を行います。",
+                explanationUrl: "https://wa3.i-3-i.info/word1231.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "「不正のトライアングル」と呼ばれ、これが揃うと不正が発生する可能性がある3つの要素はどれか。",
+                choices: ["機会、情報、正当化", "機会、正当化、動機", "機会、情報、動機", "情報、正当化、動機"],
+                correctIndex: 1,
+                explanation: "「機会、正当化、動機」を不正のトライアングルと呼び、3つの要素が揃った場合に不正が発生することがあります。「機会：不正のチャンス」「正当化：不正の言い訳」「動機：不正を行う理由」",
+                explanationUrl: "https://wa3.i-3-i.info/word15928.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "通常の検索エンジンでは検索されず匿名性が高いので、サイバー攻撃や違法商品の取引などにも利用されることがあるインターネット上のコンテンツ",
+                choices: ["RSS", "SEO", "クロスサイトスクリプティング", "ダークウェブ"],
+                correctIndex: 3,
+                explanation: "「ダークウェブ」とは特定のソフトウェアや設定を用いてのみアクセス可能なインターネットの領域のこと。闇サイトもダークウェブの一つ。",
+                explanationUrl: "https://wa3.i-3-i.info/word19606.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "WordやExcelの簡易的なプログラム機能を悪用して作成されたウイルスはどれか。",
+                choices: ["スパイウェア", "ランサムウェア", "ワーム", "マクロウィルス"],
+                correctIndex: 3,
+                explanation: "「マクロウイルス」とは、WordやExcelの「マクロ機能」を悪用して作られたウイルスです。メールに添付されているファイルを実行して感染することなどが多いです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15112.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "感染すると遠隔操作が可能になり不正アクセスが行われてしまうもの。",
+                choices: ["RAT", "VPN", "デバイスドライバ", "ランサムウェア"],
+                correctIndex: 0,
+                explanation: "「RAT」（Remote Administration Tool）とは、マルウェアの一種です。これに感染するとPCが遠隔操作されてしまいます。",
+                explanationUrl: "https://wa3.i-3-i.info/word112231.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "利用者のデータを不正に暗号化し，データの回復のために，「身代金」を要求する不正プログラム。",
+                choices: ["トロイの木馬", "ソーシャルエンジニアリング", "バックドア", "ランサムウェア"],
+                correctIndex: 3,
+                explanation: "「ランサムウェア」とは、身代金を意味する「Ransom」を意味し、会社のパソコンやサーバーに侵入し、保存されているファイルを勝手にロックした上で、元に戻す代わりに金銭を要求する悪質なプログラムです。",
+                explanationUrl: "https://wa3.i-3-i.info/word12736.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "サーバ室のドアに生体認証（指紋や顔認証など）を導入したり、ノートパソコンが盗まれないように机にワイヤーロックで固定したりする対策は、どれに該当するか",
+                choices: ["管理的セキュリティ対策", "技術的セキュリティ対策", "人的セキュリティ対策", "物理的セキュリティ対策"],
+                correctIndex: 3,
+                explanation: "「物理的セキュリティ対策」とは、建物や部屋、パソコンなどの「モノ」そのものを物理的に守る対策です。「ICカードや生体認証による入退室管理」「防犯カメラの設置」「機器のワイヤー固定」などが該当します",
+                explanationUrl: "https://wa3.i-3-i.info/word17126.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "施設をセキュリティレベルに合わせてエリアを区分けすることを何というか。",
+                choices: ["サニタイジング", "ソーシャルエンジニアリング", "ゾーニング", "ハッキング"],
+                correctIndex: 2,
+                explanation: "「ゾーニング」とは、施設をセキュリティレベルに応じて「ゾーン（区域）」に区分けする手法です。例えば、「一般の来訪者が入れるオープンエリア」「社員だけが入れる執務室」「サーバ管理者しか入れないサーバ室（高セキュリティエリア）」のように段階的に区切ります",
+                explanationUrl: "https://wa3.i-3-i.info/word19107.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "何らかの手段によって入手した他のサービスのIDとパスワードを用いてログインを試みる手法。",
+                choices: ["DoS攻撃", "SQLインジェクション", "パスワードリスト攻撃", "フィッシング"],
+                correctIndex: 2,
+                explanation: "「パスワードリスト攻撃」とは、どこかから入手したIDとパスワードを試す攻撃です。万が一パスワードが流出した場合に備えて、同じパスワードの使いまわしは避けるべきです。",
+                explanationUrl: "https://wa3.i-3-i.info/word14991.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "Webページに悪意のあるブログラムを潜ませておき、Webページを閲覧した際、ユーザが気付かないうちにマルウェアをダウンロードさせる行為",
+                choices: ["DDoS攻撃", "SQLインジェクション", "ドライブバイダウンロード", "フィッシング詐欺"],
+                correctIndex: 2,
+                explanation: "「ドライブバイダウンロード」とは、Webページを見ただけでウイルスに感染させる攻撃です。",
+                explanationUrl: "https://wa3.i-3-i.info/word12467.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "ドメイン名とIPアドレスの対応情報を不正に書き換えることによって、利用者を偽のサイトへ誘導する攻撃はどれか。",
+                choices: ["DDoS攻撃", "DNSキャッシュポイズニング", "SQLインジェクション", "フィッシング"],
+                correctIndex: 1,
+                explanation: "「DNSキャッシュポイズニング」とは、DNSのキャッシュを不正に書き換えて本来とは別のWebサイトに誘導する攻撃です。利用者が正しいURLを入力しているにもかかわらず、偽サイトへ飛ばされてしまうため、被害に気づきにくい非常に危険な攻撃です。",
+                explanationUrl: "https://wa3.i-3-i.info/word111943.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "暗号資産(仮想通貨)を入手するためのマイニングと呼ばれる作業を,他人のコンピュータを使って気付かれないように行うこと。",
+                choices: ["クリプトジャッキング", "ソーシャルエンジニアリング", "バッファオーバーフロー", "フィッシング"],
+                correctIndex: 0,
+                explanation: "「クリプトジャッキング」とは、他人のコンピュータを不正に使用して仮想通貨のマイニングを行う行為です。",
+                explanationUrl: "https://wa3.i-3-i.info/word19129.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "ソフトウェアに脆弱性があるとき、そのセキュリティパッチが提供される前に行われる攻撃",
+                choices: ["DDoS攻撃", "ブルートフォース攻撃", "ゼロディ攻撃", "セキュリティホール"],
+                correctIndex: 2,
+                explanation: "「ゼロディ攻撃」とは、ソフトウェアに脆弱性があることが判明したとき、その修正プログラムが提供される前に、この脆弱性を突いて攻撃することです。",
+                explanationUrl: "https://wa3.i-3-i.info/word16482.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "暗号やパスワードを解読するため、片っ端からすべての組み合わせを試す手法",
+                choices: ["ブルートフォース攻撃", "DDoS攻撃", "パスワードリスト攻撃", "辞書攻撃"],
+                correctIndex: 0,
+                explanation: "「ブルートフォース攻撃」とは、「総当たり攻撃」とも呼ばれ、「0000」から「9999」までを試すように、力任せにすべてのパスワードを試す方式です。（ブルート＝野獣）",
+                explanationUrl: "https://wa3.i-3-i.info/word15548.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "標的のコンピュータに大量のデータやアクセスを送り付けることで、システムをダウンさせる攻撃",
+                choices: ["バッファオーバーフロー", "フィッシング", "クロスサイトスクリプティング", "DoS攻撃"],
+                correctIndex: 3,
+                explanation: "「DoS攻撃」（Denial of Service：サービス妨害）とは、Webサイトに大量のアクセスを送り付けサーバーをパンクさせる攻撃です。また、この攻撃を複数のマシンから行うことを「DDoS攻撃」と言います。",
+                explanationUrl: "https://wa3.i-3-i.info/word11006.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "情報セキュリティの3大要素の一つで、「許可された人だけが情報にアクセスできる」こと",
+                choices: ["完全性", "可用性", "機密性", "真正性"],
+                correctIndex: 2,
+                explanation: "「機密性」とは、データを見せたくない人には見せないように保護された状態のことです。（例：スマホの画面ロック、パスワード設定、ファイルの暗号化など）",
+                explanationUrl: "https://wa3.i-3-i.info/word15461.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "情報セキュリティの3大要素の一つで、情報が勝手に改ざんされたり破壊されたりしないこと",
+                choices: ["真正性", "機密性", "完全性", "可用性"],
+                correctIndex: 2,
+                explanation: "「完全性」とは、情報が「正しい（改ざんされていない）」状態であることです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15462.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "情報セキュリティの3大要素の一つで、利用者が必要なときにいつでも利用できること",
+                choices: ["可用性", "完全性", "機密性", "真正性"],
+                correctIndex: 0,
+                explanation: "「可用性」とは、いつでも必要な時に使えることです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15460.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "セキュリティ事故が発生したとき、その影響範囲を調査して、被害拡大を防止するための対応を行う組織",
+                choices: ["CEO", "CIO", "IPA", "CSIRT"],
+                correctIndex: 3,
+                explanation: "「CSIRT」とは、セキュリティ事故が発生したときに対応する組織です。",
+                explanationUrl: "https://wa3.i-3-i.info/word15445.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "JVN(Japan Vulnerability Notes)で管理している情報はどれか。",
+                choices: ["OSSのライセンス情報", "ウイルス対策ソフトの最新情報", "工業規格の情報", "ソフトウェアの脆弱性情報"],
+                correctIndex: 3,
+                explanation: "「JVN」(Japan Vulnerability Notes）とは、ソフトウェアの脆弱性に関する情報が載っているWebサイトです。https://jvn.jp/",
+                explanationUrl: "https://wa3.i-3-i.info/word15459.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "一度だけしか使えない、使い捨てのパスワード",
+                choices: ["固定パスワード", "ワンタイムパスワード", "PINコード", "シングルサインオン"],
+                correctIndex: 1,
+                explanation: "「ワンタイムパスワード（OTP）」とは、一度きりしか使えない「使い捨て」のパスワードです。",
+                explanationUrl: "https://wa3.i-3-i.info/word1103.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "宛先IPアドレスなどを確認し、通信を通すか、遮断するかを判断するもの",
+                choices: ["ファイアウォール", "プロキシ", "DMZ", "DNS"],
+                correctIndex: 0,
+                explanation: "「ファイアウォール」は、ネットワークの出入り口でパケットを通すか通さないかを判断する「門番」です。",
+                explanationUrl: "https://wa3.i-3-i.info/word1669.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "Webサイトへの不正な通信を防御したり、サイバー攻撃からWebサイトを守るセキュリティシステム",
+                choices: ["DMZ", "IDS", "MACアドレスフィルタリング", "WAF"],
+                correctIndex: 3,
+                explanation: "「WAF」（Web Application Firewall）とは、Webサイトを不正なアクセスから保護するシステムのことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15376.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "ネットワークなどに対する不正アクセスやその予兆を検知し、管理者に通知するシステム。",
+                choices: ["IDS", "IPS", "検疫ネットワーク", "VPN"],
+                correctIndex: 0,
+                explanation: "「IDS」（Intrusion Detection System）とは、「侵入検知システム」のことです。ネットワーク上の通信を監視し、不正なアクセスを検知した場合に管理者にメールなどで通知します。",
+                explanationUrl: "https://wa3.i-3-i.info/word15235.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "ビットコインなどの暗号資産の基盤技術として利用されており、複数のコンピュータが同じ内容のデータを保持し、各コンピュータがデータの正当性を検証して担保することによって、改ざんが非常に困難な技術",
+                choices: ["クラウドコンピューティング", "ディープラーニング", "ブロックチェーン", "リレーショナルデータベース"],
+                correctIndex: 2,
+                explanation: "「ブロックチェーン」とは、ビットコインなどの暗号資産を管理する技術です。取引記録の改ざんが非常に難しいという特徴をもちます。",
+                explanationUrl: "https://wa3.i-3-i.info/word16453.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "コンピュータに関する犯罪や生じた際に、コンピュータから削除された電子メールを復元するなどして、証拠を収集し保全すること。",
+                choices: ["デジタルフォレンジックス", "デジタルサイネージ", "ペネトレーションテスト", "ブロックチェーン"],
+                correctIndex: 0,
+                explanation: "「デジタルフォレンジックス」（Forensics＝科学捜査の）とは、犯罪捜査のためにデジタル機器に記録されたデータの回収や分析をする技術のことです。「デジタル鑑識」とも呼ばれます。",
+                explanationUrl: "https://wa3.i-3-i.info/word110187.html"
+            },
+
+
+            //-------------------------------------
+            //    ストラテジ
+            //-------------------------------------
+
+
+            {
+                category: "ストラテジ",
+                question: "次の中で著作権法の保護の対象となるものはどれか。",
+                choices: ["アルゴリズムと操作マニュアル", "アルゴリズムと通信プロトコル", "ソースコードと操作マニュアル", "ソースコードと通信プロトコル"],
+                correctIndex: 2,
+                explanation: "ソースコードも操作マニュアルも著作権がありますが、アルゴリズム自体はアイデアや仕組みであるため、著作権はありません。通信プロトコルにも著作権はありません。",
+                explanationUrl: "https://note.com/takuto_it/n/n6c092c99d427"
+            },
+            {
+                category: "ストラテジ",
+                question: "定額の料金や、一定の期間での利用ができる利用形態はどれか。",
+                choices: ["アクティベーション", "アドウェア", "サブスクリプション", "ボリュームライセンス"],
+                correctIndex: 2,
+                explanation: "「サブスクリプション」とは、定額料金で、一定期間の利用ができる形態です。いわゆる「サブスク」。期間中は利用し放題。",
+                explanationUrl: "https://wa3.i-3-i.info/word18214.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "製造物の「安全性に関わる欠陥」により人の生命や身体に被害が生じた場合に、製造者に損害賠償を求めることができる法律は？",
+                choices: ["消費者契約法", "製造物責任法", "特定商取引法", "不正競争防止法"],
+                correctIndex: 1,
+                explanation: "「製造物責任法」（PL法）とは、安全上の欠陥によりやけどなどの「ケガ」をした場合に損害賠償を請求できる法律です。",
+                explanationUrl: ""
+            },
+            {
+                category: "ストラテジ",
+                question: "「秘密保持契約」とも呼ばれ、営業秘密や機密情報の情報漏えいを防ぐ契約。",
+                choices: ["BCP", "NDA", "RFP", "SLA"],
+                correctIndex: 1,
+                explanation: "「NDA」（Non-Disclosure Agreement：秘密保持契約）とは、機密情報を外部へ漏えいさせないための契約です。",
+                explanationUrl: "https://wa3.i-3-i.info/word110527.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "内部告発をした労働者が解雇や減給などの不利益を受けないように保護する法律",
+                choices: ["金融商品取引法", "公益通報者保護法", "労働基準法", "労働者派遣法"],
+                correctIndex: 1,
+                explanation: "「公益通報者保護法」とは、企業の不正を通報した本人が不利益を受けないように保護する法律です。通報内容は勤務先に関わるものでなければならず、私的なものは対象外。",
+                explanationUrl: "https://freenance.net/media/wp-content/uploads/2025/08/kouekituuhoushahogohou.png"
+            },
+
+        ];
+
+        // 状態管理
+        let queueIndices = [];       
+        let attemptedIndices = [];   
+        let firstTryCorrectCount = 0;
+        let missedFirstTryIndices = []; 
+        let reviewLaterIndices = []; 
+        let currentQuestion = null;
+        let currentQuestionIndex = null; 
+
+        // --- Cookie操作 ---
+        const COOKIE_NAME = "quiz_progress_ipass_tech05";
+
+        function saveProgressToCookie() {
+            const expires = new Date(Date.now() + 30 * 86400000).toUTCString();
+            const saveData = {
+                queue: queueIndices,
+                attempted: attemptedIndices,
+                firstTryCount: firstTryCorrectCount,
+                missedFirstTry: missedFirstTryIndices,
+                reviewLater: reviewLaterIndices
+            };
+            document.cookie = `${COOKIE_NAME}=${JSON.stringify(saveData)}; expires=${expires}; path=/`;
+        }
+
+        function loadProgressFromCookie() {
+            const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]+)`));
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed)) {
+                        return { queue: parsed, attempted: [], firstTryCount: 0, missedFirstTry: [], reviewLater: [] };
+                    }
+                    return parsed;
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${COOKIE_NAME}=; max-age=0; path=/`;
+        }
+
+        // --- DOM要素 ---
+        const progressBadge = document.getElementById("progress-badge");
+        const categoryBadge = document.getElementById("category-badge");
+        const questionText = document.getElementById("question-text");
+        const choicesContainer = document.getElementById("choices-container");
+        const resultMessage = document.getElementById("result-message");
+        const nextBtn = document.getElementById("next-btn");
+        const reviewLaterBtn = document.getElementById("review-later-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const quizContainer = document.getElementById("quiz-container");
+        
+        const completionContainer = document.getElementById("completion-container");
+        const firstTryCountDisplay = document.getElementById("first-try-count-display");
+        const totalQuestionsDisplay = document.getElementById("total-questions-display");
+        const retryMissedBtn = document.getElementById("retry-missed-btn");
+        const retryReviewBtn = document.getElementById("retry-review-btn");
+        
+        const explanationContainer = document.getElementById("explanation-container");
+        const explanationText = document.getElementById("explanation-text");
+        const explanationLink = document.getElementById("explanation-link");
+
+        // --- 初期化処理 ---
+        function initQuiz(forceReset = false) {
+            if (forceReset) {
+                clearProgressCookie();
+                queueIndices = null;
+            }
+
+            const savedData = loadProgressFromCookie();
+            const isValidSave = savedData && 
+                                Array.isArray(savedData.queue) &&
+                                savedData.queue.every(idx => idx >= 0 && idx < originalQuizData.length);
+
+            // 【変更点】savedData.queue.length > 0 の条件を削除。
+            // 残り0問（クリア状態）のデータでも有効なセーブデータとして読み込むようにしました。
+            if (!forceReset && isValidSave) {
+                queueIndices = savedData.queue;
+                attemptedIndices = savedData.attempted || [];
+                firstTryCorrectCount = savedData.firstTryCount || 0;
+                missedFirstTryIndices = savedData.missedFirstTry || [];
+                reviewLaterIndices = savedData.reviewLater || [];
+            } else {
+                queueIndices = originalQuizData.map((_, index) => index);
+                attemptedIndices = [];
+                firstTryCorrectCount = 0;
+                missedFirstTryIndices = [];
+                reviewLaterIndices = [];
+            }
+
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 不正解問題への再挑戦 ---
+        function retryMissedQuestions() {
+            queueIndices = [...missedFirstTryIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 「後で見直す」問題への再挑戦 ---
+        function retryReviewQuestions() {
+            queueIndices = [...reviewLaterIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 問題読み込み ---
+        function loadNextQuestion() {
+            if (queueIndices.length === 0) {
+                // 【変更点】クリア時に clearProgressCookie() を呼ばないようにし、クリア状態を保存する
+                saveProgressToCookie(); 
+
+                quizContainer.classList.add("d-none");
+                completionContainer.classList.remove("d-none");
+                progressBadge.textContent = "クリア！";
+                resetBtn.style.display = "none";
+                
+                const currentSessionTotal = firstTryCorrectCount + missedFirstTryIndices.length;
+                firstTryCountDisplay.textContent = firstTryCorrectCount;
+                totalQuestionsDisplay.textContent = currentSessionTotal;
+
+                if (missedFirstTryIndices.length > 0) {
+                    retryMissedBtn.classList.remove("d-none");
+                } else {
+                    retryMissedBtn.classList.add("d-none");
+                }
+
+                if (reviewLaterIndices.length > 0) {
+                    retryReviewBtn.textContent = `⭐ 「後で見直す」問題にチャレンジ (${reviewLaterIndices.length}問)`;
+                    retryReviewBtn.classList.remove("d-none");
+                } else {
+                    retryReviewBtn.classList.add("d-none");
+                }
+                
+                return;
+            }
+
+            currentQuestionIndex = queueIndices[0];
+            currentQuestion = originalQuizData[currentQuestionIndex];
+
+            progressBadge.textContent = `残り ${queueIndices.length} 問`;
+            categoryBadge.textContent = currentQuestion.category;
+            questionText.textContent = currentQuestion.question;
+            choicesContainer.innerHTML = "";
+            resultMessage.style.display = "none";
+            explanationContainer.classList.add("d-none");
+            nextBtn.classList.add("d-none");
+            reviewLaterBtn.classList.add("d-none");
+
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            } else {
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            }
+
+            currentQuestion.choices.forEach((choice, index) => {
+                const button = document.createElement("button");
+                button.textContent = choice;
+                button.className = "btn btn-outline-secondary choice-btn p-3";
+                button.onclick = () => checkAnswer(index, button);
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // --- 解答チェック ---
+        function checkAnswer(selectedIndex, clickedButton) {
+            const buttons = choicesContainer.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+
+            const answeredIndex = queueIndices.shift(); 
+            
+            const isFirstTry = !attemptedIndices.includes(answeredIndex);
+            if (isFirstTry) {
+                attemptedIndices.push(answeredIndex);
+            }
+            
+            resultMessage.style.display = "block";
+
+            if (selectedIndex === currentQuestion.correctIndex) {
+                if (isFirstTry) {
+                    firstTryCorrectCount++;
+                }
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-success", "text-white");
+                resultMessage.textContent = "⭕ 正解！";
+                resultMessage.className = "text-success mb-2";
+            } else {
+                if (isFirstTry) {
+                    missedFirstTryIndices.push(answeredIndex);
+                }
+                
+                queueIndices.push(answeredIndex);
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-danger", "text-white");
+                buttons[currentQuestion.correctIndex].classList.remove("btn-outline-secondary");
+                buttons[currentQuestion.correctIndex].classList.add("btn-success", "text-white");
+
+                resultMessage.textContent = "❌ 不正解... (後で再出題されます)";
+                resultMessage.className = "text-danger mb-2";
+            }
+
+            saveProgressToCookie();
+
+            if (currentQuestion.explanation) {
+                explanationText.textContent = currentQuestion.explanation;
+                if (currentQuestion.explanationUrl) {
+                    explanationLink.href = currentQuestion.explanationUrl;
+                    explanationLink.classList.remove("d-none");
+                } else {
+                    explanationLink.classList.add("d-none");
+                }
+                explanationContainer.classList.remove("d-none");
+            }
+
+            nextBtn.classList.remove("d-none");
+            reviewLaterBtn.classList.remove("d-none");
+        }
+
+        // --- 「後で見直す」ボタンのクリック処理（トグル機能） ---
+        reviewLaterBtn.addEventListener("click", () => {
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterIndices = reviewLaterIndices.filter(index => index !== currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            } else {
+                reviewLaterIndices.push(currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            }
+        });
+
+        // --- リセット処理 ---
+        resetBtn.addEventListener("click", () => {
+            if (confirm("これまでの解答状況をリセットして、最初からやり直しますか？")) {
+                initQuiz(true);
+            }
+        });
+
+        // イベント設定
+        nextBtn.addEventListener("click", loadNextQuestion);
+        window.onload = () => initQuiz(false);
+    </script>
+</body>
+</html>

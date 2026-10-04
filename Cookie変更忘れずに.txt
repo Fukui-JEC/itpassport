@@ -2,7 +2,7 @@ Cookie変更忘れずに
 
 
             {
-                category: "",
+                category: "セキュリティ",
                 question: "",
                 choices: ["", "", "", ""],
                 correctIndex: ,
