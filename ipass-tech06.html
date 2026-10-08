@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4択クイズ</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .choice-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(5px);
+        }
+        #result-message {
+            display: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body class="bg-light pt-5">
+    <div class="container">
+        <div class="card shadow-sm mx-auto" style="max-width: 600px;">
+            <div class="card-body p-4">
+                <!-- ヘッダー領域 -->
+                <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+                    <h2 class="card-title m-0 pt-1">確認クイズ</h2>
+                    <div class="text-end">
+                        <span id="progress-badge" class="badge bg-secondary mb-2 d-block"></span>
+                        <button id="reset-btn" class="btn btn-sm btn-outline-danger" style="font-size: 0.8rem;">🔄 リセット</button>
+                    </div>
+                </div>
+                
+                <!-- クイズエリア -->
+                <div id="quiz-container">
+                    <div class="mb-2">
+                        <span id="category-badge" class="badge bg-primary px-3 py-2 rounded-pill shadow-sm"></span>
+                    </div>
+                    <p id="question-text" class="fs-5 mb-4 fw-bold">読み込み中...</p>
+                    
+                    <div id="choices-container">
+                        <!-- 選択肢がJavaScriptで生成されます -->
+                    </div>
+                    
+                    <!-- 結果表示・解説エリア -->
+                    <div id="result-container" class="mt-4 text-center">
+                        <p id="result-message" class="mb-2"></p>
+                        
+                        <div id="explanation-container" class="card bg-light text-start p-3 mb-3 d-none border-0">
+                            <h6 class="fw-bold mb-2">💡 解説</h6>
+                            <p id="explanation-text" class="small mb-2 text-secondary"></p>
+                            <div>
+                                <a id="explanation-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
+                                    詳細ページを開く ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- アクションボタンエリア -->
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button id="review-later-btn" class="btn btn-outline-warning d-none">⭐ 後で見直す</button>
+                            <button id="next-btn" class="btn btn-primary px-4 d-none">次の問題へ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完了画面 -->
+                <div id="completion-container" class="text-center d-none py-4">
+                    <h3 class="text-success mb-3">全問クリア！</h3>
+                    <p class="text-muted mb-4">お疲れ様でした。</p>
+                    
+                    <!-- 一発正解数の表示パネル -->
+                    <div class="card bg-light border-0 mb-4 mx-auto shadow-sm" style="max-width: 300px;">
+                        <div class="card-body">
+                            <h5 class="card-title text-secondary fs-6">一発正解数</h5>
+                            <p class="display-4 mb-0 text-primary fw-bold">
+                                <span id="first-try-count-display">0</span><span class="fs-4 text-muted fw-normal"> / <span id="total-questions-display">0</span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ボタンエリア -->
+                    <div class="d-grid gap-2 col-10 mx-auto">
+                        <button id="retry-missed-btn" onclick="retryMissedQuestions()" class="btn btn-danger fw-bold d-none">
+                            ⚠️ 不正解だった問題に再チャレンジ
+                        </button>
+                        <button id="retry-review-btn" onclick="retryReviewQuestions()" class="btn btn-warning text-dark fw-bold d-none">
+                            ⭐ 「後で見直す」問題にチャレンジ
+                        </button>
+                        <button onclick="initQuiz(true)" class="btn btn-outline-primary">
+                            最初からすべてやり直す
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const originalQuizData = [
+            //-------------------------------------
+            //    セキュリティ
+            //-------------------------------------
+
+            {
+                category: "セキュリティ",
+                question: "セキュリティ事故が発生したとき、その影響範囲を調査して、被害拡大を防止するための対応を行う組織",
+                choices: ["CEO", "CIO", "IPA", "CSIRT"],
+                correctIndex: 3,
+                explanation: "「CSIRT」とは、「セキュリティ事故が発生したとき」に対応する組織です。",
+                explanationUrl: "https://wa3.i-3-i.info/word15445.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "JVN(Japan Vulnerability Notes)で管理している情報はどれか。",
+                choices: ["OSSのライセンス情報", "ウイルス対策ソフトの最新情報", "工業規格の情報", "ソフトウェアの脆弱性情報"],
+                correctIndex: 3,
+                explanation: "「JVN」(Japan Vulnerability Notes）とは、ソフトウェアの「脆弱性」に関する情報が公開されているWebサイトです。https://jvn.jp/",
+                explanationUrl: "https://wa3.i-3-i.info/word15459.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "一度だけしか使えない、使い捨てのパスワード",
+                choices: ["固定パスワード", "ワンタイムパスワード", "PINコード", "シングルサインオン"],
+                correctIndex: 1,
+                explanation: "「ワンタイムパスワード（OTP）」とは、一度きりしか使えない「使い捨て」のパスワードです。",
+                explanationUrl: "https://wa3.i-3-i.info/word1103.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "宛先IPアドレスなどを確認し、通信を通すか、遮断するかを判断するもの",
+                choices: ["ファイアウォール", "プロキシ", "DMZ", "DNS"],
+                correctIndex: 0,
+                explanation: "「ファイアウォール」は、ネットワークの出入り口でパケットを通すか通さないかを判断する「門番」です。",
+                explanationUrl: "https://wa3.i-3-i.info/word1669.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "Webサイトへの不正な通信を防御したり、サイバー攻撃からWebサイトを守るセキュリティシステム",
+                choices: ["DMZ", "IDS", "MACアドレスフィルタリング", "WAF"],
+                correctIndex: 3,
+                explanation: "「WAF」（Web Application Firewall）とは、Webサイトを不正なアクセスから保護するシステムのことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15376.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "ネットワークなどに対する不正アクセスやその予兆を検知し、管理者に通知するシステム。",
+                choices: ["IDS", "IPS", "検疫ネットワーク", "VPN"],
+                correctIndex: 0,
+                explanation: "「IDS」（Intrusion Detection System）とは、「侵入検知システム」のことです。ネットワーク上の通信を監視し、不正なアクセスを検知した場合に管理者にメールなどで通知します。",
+                explanationUrl: "https://wa3.i-3-i.info/word15235.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "ビットコインなどの暗号資産の基盤技術として利用されており、複数のコンピュータが同じ内容のデータを保持し、各コンピュータがデータの正当性を検証して担保することによって、改ざんが非常に困難な技術",
+                choices: ["クラウドコンピューティング", "ディープラーニング", "ブロックチェーン", "リレーショナルデータベース"],
+                correctIndex: 2,
+                explanation: "「ブロックチェーン」とは、ビットコインなどの暗号資産を管理する技術です。取引記録の改ざんが非常に難しいという特徴をもちます。",
+                explanationUrl: "https://wa3.i-3-i.info/word16453.html"
+            },
+            {
+                category: "セキュリティ",
+                question: "コンピュータに関する犯罪や生じた際に、コンピュータから削除された電子メールを復元するなどして、証拠を収集し保全すること。",
+                choices: ["デジタルフォレンジックス", "デジタルサイネージ", "ペネトレーションテスト", "ブロックチェーン"],
+                correctIndex: 0,
+                explanation: "「デジタルフォレンジックス」（Forensics＝鑑識）は、「デジタル鑑識」とも呼ばれます。犯罪捜査のためにデジタル機器に記録されたデータの回収や分析をすることです。",
+                explanationUrl: "https://wa3.i-3-i.info/word110187.html"
+            },
+
+
+            //-------------------------------------
+            //    ストラテジ
+            //-------------------------------------
+
+            {
+                category: "ストラテジ",
+                question: "電波を用いて、直接触れることなく至近距離からICタグに記録されたデータを読み書きする技術はどれか。",
+                choices: ["GPS", "QRコード", "POSシステム", "RFID"],
+                correctIndex: 3,
+                explanation: "「RFID」（Radio Frequency Identification）とは、ICタグと読み取り機の間で電波を飛ばし、非接触で（触れずに）データをやり取りする技術です。ユニクロのセルフレジでカゴの中の商品を一括で精算する仕組みや、Suicaなどの交通系ICカードなどで広く利用されています。",
+                explanationUrl: "https://wa3.i-3-i.info/word15478.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "経理や人事、生産、販売などの基幹業務と関連する情報を一元管理し、経営資源を最適配分することで、効率的な経営の実現を図るシステム。",
+                choices: ["CRM", "ERP", "SCM", "SFA"],
+                correctIndex: 1,
+                explanation: "「ERP」（Enterprise Resource Planning：企業資源計画）とは、会社の中にあるすべての部署のデータを「1つのシステム」にまとめ、会社の状況をリアルタイムで把握できるようにするシステムのことです",
+                explanationUrl: "https://wa3.i-3-i.info/word17190.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "インターネット上で自分の活動や夢を公開し、共感する人々から資金の提供や協力を得ること。",
+                choices: ["クラウドコンピューティング", "クラウドソーシング", "クラウドファンディング", "シェアリングエコノミー"],
+                correctIndex: 2,
+                explanation: "「クラウドファンディング」とは、ネットで多くの人々（Crowd：群衆）から、資金（Funding）を集める仕組みです。新しいガジェットの開発資金や、映画の制作費、被災地の支援金など、多岐にわたる目的で利用されています。",
+                explanationUrl: "https://wa3.i-3-i.info/word16419.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "大量のデータを学習した人工知能が、これまで存在しなかった新しい文章、画像、音声、プログラムコードなどを自ら作り出す技術",
+                choices: ["RPA", "エキスパートシステム", "生成AI", "メタバース"],
+                correctIndex: 2,
+                explanation: "「生成AI」とは、事前に学習したデータを基に、画像、文章、音声、動画、プログラムコードなどの新しいコンテンツを生成するAI技術です。",
+                explanationUrl: "https://wa3.i-3-i.info/word110895.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "生成AIが、学習データの誤りや不足などによって、事実とは異なる情報や無関係な情報を、もっともらしい情報として生成すること。",
+                choices: ["アノテーション", "ディープフェイク", "バイアス", "ハルシネーション"],
+                correctIndex: 3,
+                explanation: "「ハルシネーション」（Hallucination：幻覚）とは、AIが誤った情報を出力することです。私たち人間はハルシネーションを見抜く力が求められます。",
+                explanationUrl: "https://wa3.i-3-i.info/word111308.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "必要な時期に必要な量の原材料や部品を調達することによって、工程間の在庫をできるだけもたないようにする生産方式",
+                choices: ["BPO", "CIM", "JIT", "OEM"],
+                correctIndex: 2,
+                explanation: "「JIT」（Just In Time：ジャストインタイム）とは、ムダを省くための考え方の一つで、必要なモノを、必要な時に、必要な量だけ生産することです。",
+                explanationUrl: "https://wa3.i-3-i.info/word17000.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "製品の開発期間を短縮するため、設計、試作、生産などの複数の工程を「同時並行」で進めること。",
+                choices: ["コンカレントエンジニアリング", "リバースエンジニアリング", "BPR", "プロトタイピング"],
+                correctIndex: 0,
+                explanation: "「コンカレントエンジニアリング」（Concurrent＝同時並行）とは、製品の開発期間（リードタイム）を短縮するために、設計、試作、製造といった各工程を、できる範囲で同時並行で進める手法です。",
+                explanationUrl: "https://wa3.i-3-i.info/word16356.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "基本的な機能は無料で提供し、追加機能については有料で提供する製品やサービス。",
+                choices: ["フリーウェア", "フリーミアム", "フリーライド", "フリーランス"],
+                correctIndex: 1,
+                explanation: "「フリーミアム」（Freemium）とは、フリー（無料）とプレミアム（割増）の造語で、9割の無料ユーザーを集めることでサービスの知名度を上げ、残り1割の有料（プレミアム）ユーザーからの課金でビジネスを成立させます。",
+                explanationUrl: ""
+            },
+            {
+                category: "ストラテジ",
+                question: "機械同士がネットワークを介して情報をやり取りし、自律的な制御や動作を行う仕組み。",
+                choices: ["MOT", "MRP", "M2M", "O2O"],
+                correctIndex: 2,
+                explanation: "「M2M」（Machine to Machine）とは、人間を介さずに「機械（Machine）」と「機械（Machine）」がネットワークを通じて情報をやり取りし、自動で機器の制御やデータの収集を行う仕組みです。",
+                explanationUrl: "https://wa3.i-3-i.info/word12881.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "ゲーム機、家電製品などに搭載されている、ハードウェアの基本的な制御を行うためのソフトウェアはどれか。",
+                choices: ["グループウェア", "シェアウェア", "ファームウェア", "ミドルウェア"],
+                correctIndex: 2,
+                explanation: "「ファームウェア」（Firmware）とは、ゲーム機や家電製品の中に搭載されている、そのハードウェアを動かすためのソフトウェアです。",
+                explanationUrl: "https://wa3.i-3-i.info/word12773.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "「営業支援システム」と呼ばれ、顧客の情報や商談の状況などを社内で共有できるようにした、企業の営業活動を支援するシステム。",
+                choices: ["CAEシステム", "MRPシステム", "SCMシステム", "SFAシステム"],
+                correctIndex: 3,
+                explanation: "「SFAシステム」（Sales Force Automation）とは、営業活動を支援するシステムのことです。これまで営業マン個人の頭の中にしかなかった「どの顧客に、いつ、どんな提案をしているか」という情報をシステムで共有し、営業活動を助けてくれます。",
+                explanationUrl: "https://wa3.i-3-i.info/word13091.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "パソコンやインターネットを活用した、場所や時間にとらわれない柔軟な働き方。",
+                choices: ["テレワーク", "フレックスタイム", "ワークシェアリング", "BYOD"],
+                correctIndex: 0,
+                explanation: "「テレワーク」とは「離れた場所（Tele）」と「働く（Work）」を組み合わせた造語です。ITを活用して場所や時間にとらわれない働き方ができます。",
+                explanationUrl: "https://wa3.i-3-i.info/word16938.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "インターネットを経由して、巨大なデータセンターのソフトウェアやハードウェアなどのリソースを必要な分だけ利用し、利用した分の料金を支払う仕組み",
+                choices: ["アウトソーシング", "オンプレミス", "エッジコンピューティング", "クラウドコンピューティング"],
+                correctIndex: 3,
+                explanation: "「クラウドコンピューティング」とは、インターネットの向こう側（クラウド）にある巨大なデータセンターのコンピュータ資源を、水道や電気のように「使った分だけ」料金を払って利用する仕組みです。",
+                explanationUrl: "https://wa3.i-3-i.info/word1568.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "利用者に対して、ソフトウェアを、必要なときに必要なだけネットワーク経由で提供するサービス。",
+                choices: ["IaaS", "OSS", "PaaS", "SaaS"],
+                correctIndex: 3,
+                explanation: "「SaaS」（Software as a Service）とは、ソフトウェアをインターネット越しに使わせてあげる仕組みです。GmailやGoogle Classroomなどがこれに当たります。",
+                explanationUrl: "https://wa3.i-3-i.info/word12212.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "学習者一人ひとりに最適なコンテンツを提供し、学習効率と効果を高める仕組み",
+                choices: ["アダプティブラーニング", "タレントマネジメント", "ディープラーニング", "ナレッジマネジメント"],
+                correctIndex: 0,
+                explanation: "「アダプティブラーニング」（Adaptive Learning）とは、ひとりひとりの能力や適正に合わせて、勉強のやり方や内容を変えることです。",
+                explanationUrl: "https://wa3.i-3-i.info/word110081.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "ITを適切に活用できる能力を示す用語",
+                choices: ["アクセシビリティ", "コアコンピタンス", "情報リテラシー", "デジタルディバイド"],
+                correctIndex: 2,
+                explanation: "「情報リテラシー」とは、コンピュータとかネットワークなどIT関連に対する基本的な知識や理解のこと",
+                explanationUrl: "https://wa3.i-3-i.info/word16372.html"
+            },
+            {
+                category: "ストラテジ",
+                question: "コンピュータなどの情報機器を使いこなせる人と使いこなせない人との間に生じる、入手できる情報の質や量、収入などの格差",
+                choices: ["SNS", "デジタルサイネージ", "デジタルディバイド", "デジタルネイティブ"],
+                correctIndex: 2,
+                explanation: "「デジタルディバイド」とは「情報格差」のことです。コンピュータを使いこなせる人と使いこなせない人でいろいろな面で有利・不利が生まれてしまうことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word19567.html"
+            },
+        ];
+
+        // 状態管理
+        let queueIndices = [];       
+        let attemptedIndices = [];   
+        let firstTryCorrectCount = 0;
+        let missedFirstTryIndices = []; 
+        let reviewLaterIndices = []; 
+        let currentQuestion = null;
+        let currentQuestionIndex = null; 
+
+        // --- Cookie操作 ---
+        const COOKIE_NAME = "quiz_progress_ipass_tech06";
+
+        function saveProgressToCookie() {
+            const expires = new Date(Date.now() + 30 * 86400000).toUTCString();
+            const saveData = {
+                queue: queueIndices,
+                attempted: attemptedIndices,
+                firstTryCount: firstTryCorrectCount,
+                missedFirstTry: missedFirstTryIndices,
+                reviewLater: reviewLaterIndices
+            };
+            document.cookie = `${COOKIE_NAME}=${JSON.stringify(saveData)}; expires=${expires}; path=/`;
+        }
+
+        function loadProgressFromCookie() {
+            const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]+)`));
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed)) {
+                        return { queue: parsed, attempted: [], firstTryCount: 0, missedFirstTry: [], reviewLater: [] };
+                    }
+                    return parsed;
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${COOKIE_NAME}=; max-age=0; path=/`;
+        }
+
+        // --- DOM要素 ---
+        const progressBadge = document.getElementById("progress-badge");
+        const categoryBadge = document.getElementById("category-badge");
+        const questionText = document.getElementById("question-text");
+        const choicesContainer = document.getElementById("choices-container");
+        const resultMessage = document.getElementById("result-message");
+        const nextBtn = document.getElementById("next-btn");
+        const reviewLaterBtn = document.getElementById("review-later-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const quizContainer = document.getElementById("quiz-container");
+        
+        const completionContainer = document.getElementById("completion-container");
+        const firstTryCountDisplay = document.getElementById("first-try-count-display");
+        const totalQuestionsDisplay = document.getElementById("total-questions-display");
+        const retryMissedBtn = document.getElementById("retry-missed-btn");
+        const retryReviewBtn = document.getElementById("retry-review-btn");
+        
+        const explanationContainer = document.getElementById("explanation-container");
+        const explanationText = document.getElementById("explanation-text");
+        const explanationLink = document.getElementById("explanation-link");
+
+        // --- 初期化処理 ---
+        function initQuiz(forceReset = false) {
+            if (forceReset) {
+                clearProgressCookie();
+                queueIndices = null;
+            }
+
+            const savedData = loadProgressFromCookie();
+            const isValidSave = savedData && 
+                                Array.isArray(savedData.queue) &&
+                                savedData.queue.every(idx => idx >= 0 && idx < originalQuizData.length);
+
+            // 【変更点】savedData.queue.length > 0 の条件を削除。
+            // 残り0問（クリア状態）のデータでも有効なセーブデータとして読み込むようにしました。
+            if (!forceReset && isValidSave) {
+                queueIndices = savedData.queue;
+                attemptedIndices = savedData.attempted || [];
+                firstTryCorrectCount = savedData.firstTryCount || 0;
+                missedFirstTryIndices = savedData.missedFirstTry || [];
+                reviewLaterIndices = savedData.reviewLater || [];
+            } else {
+                queueIndices = originalQuizData.map((_, index) => index);
+                attemptedIndices = [];
+                firstTryCorrectCount = 0;
+                missedFirstTryIndices = [];
+                reviewLaterIndices = [];
+            }
+
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 不正解問題への再挑戦 ---
+        function retryMissedQuestions() {
+            queueIndices = [...missedFirstTryIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 「後で見直す」問題への再挑戦 ---
+        function retryReviewQuestions() {
+            queueIndices = [...reviewLaterIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 問題読み込み ---
+        function loadNextQuestion() {
+            if (queueIndices.length === 0) {
+                // 【変更点】クリア時に clearProgressCookie() を呼ばないようにし、クリア状態を保存する
+                saveProgressToCookie(); 
+
+                quizContainer.classList.add("d-none");
+                completionContainer.classList.remove("d-none");
+                progressBadge.textContent = "クリア！";
+                resetBtn.style.display = "none";
+                
+                const currentSessionTotal = firstTryCorrectCount + missedFirstTryIndices.length;
+                firstTryCountDisplay.textContent = firstTryCorrectCount;
+                totalQuestionsDisplay.textContent = currentSessionTotal;
+
+                if (missedFirstTryIndices.length > 0) {
+                    retryMissedBtn.classList.remove("d-none");
+                } else {
+                    retryMissedBtn.classList.add("d-none");
+                }
+
+                if (reviewLaterIndices.length > 0) {
+                    retryReviewBtn.textContent = `⭐ 「後で見直す」問題にチャレンジ (${reviewLaterIndices.length}問)`;
+                    retryReviewBtn.classList.remove("d-none");
+                } else {
+                    retryReviewBtn.classList.add("d-none");
+                }
+                
+                return;
+            }
+
+            currentQuestionIndex = queueIndices[0];
+            currentQuestion = originalQuizData[currentQuestionIndex];
+
+            progressBadge.textContent = `残り ${queueIndices.length} 問`;
+            categoryBadge.textContent = currentQuestion.category;
+            questionText.textContent = currentQuestion.question;
+            choicesContainer.innerHTML = "";
+            resultMessage.style.display = "none";
+            explanationContainer.classList.add("d-none");
+            nextBtn.classList.add("d-none");
+            reviewLaterBtn.classList.add("d-none");
+
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            } else {
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            }
+
+            currentQuestion.choices.forEach((choice, index) => {
+                const button = document.createElement("button");
+                button.textContent = choice;
+                button.className = "btn btn-outline-secondary choice-btn p-3";
+                button.onclick = () => checkAnswer(index, button);
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // --- 解答チェック ---
+        function checkAnswer(selectedIndex, clickedButton) {
+            const buttons = choicesContainer.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+
+            const answeredIndex = queueIndices.shift(); 
+            
+            const isFirstTry = !attemptedIndices.includes(answeredIndex);
+            if (isFirstTry) {
+                attemptedIndices.push(answeredIndex);
+            }
+            
+            resultMessage.style.display = "block";
+
+            if (selectedIndex === currentQuestion.correctIndex) {
+                if (isFirstTry) {
+                    firstTryCorrectCount++;
+                }
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-success", "text-white");
+                resultMessage.textContent = "⭕ 正解！";
+                resultMessage.className = "text-success mb-2";
+            } else {
+                if (isFirstTry) {
+                    missedFirstTryIndices.push(answeredIndex);
+                }
+                
+                queueIndices.push(answeredIndex);
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-danger", "text-white");
+                buttons[currentQuestion.correctIndex].classList.remove("btn-outline-secondary");
+                buttons[currentQuestion.correctIndex].classList.add("btn-success", "text-white");
+
+                resultMessage.textContent = "❌ 不正解... (後で再出題されます)";
+                resultMessage.className = "text-danger mb-2";
+            }
+
+            saveProgressToCookie();
+
+            if (currentQuestion.explanation) {
+                explanationText.textContent = currentQuestion.explanation;
+                if (currentQuestion.explanationUrl) {
+                    explanationLink.href = currentQuestion.explanationUrl;
+                    explanationLink.classList.remove("d-none");
+                } else {
+                    explanationLink.classList.add("d-none");
+                }
+                explanationContainer.classList.remove("d-none");
+            }
+
+            nextBtn.classList.remove("d-none");
+            reviewLaterBtn.classList.remove("d-none");
+        }
+
+        // --- 「後で見直す」ボタンのクリック処理（トグル機能） ---
+        reviewLaterBtn.addEventListener("click", () => {
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterIndices = reviewLaterIndices.filter(index => index !== currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            } else {
+                reviewLaterIndices.push(currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            }
+        });
+
+        // --- リセット処理 ---
+        resetBtn.addEventListener("click", () => {
+            if (confirm("これまでの解答状況をリセットして、最初からやり直しますか？")) {
+                initQuiz(true);
+            }
+        });
+
+        // イベント設定
+        nextBtn.addEventListener("click", loadNextQuestion);
+        window.onload = () => initQuiz(false);
+    </script>
+</body>
+</html>
