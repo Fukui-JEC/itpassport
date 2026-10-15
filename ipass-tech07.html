@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4択クイズ</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .choice-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .choice-btn:hover:not(:disabled) {
+            transform: translateX(5px);
+        }
+        #result-message {
+            display: none;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body class="bg-light pt-5">
+    <div class="container">
+        <div class="card shadow-sm mx-auto" style="max-width: 600px;">
+            <div class="card-body p-4">
+                <!-- ヘッダー領域 -->
+                <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+                    <h2 class="card-title m-0 pt-1">確認クイズ</h2>
+                    <div class="text-end">
+                        <span id="progress-badge" class="badge bg-secondary mb-2 d-block"></span>
+                        <button id="reset-btn" class="btn btn-sm btn-outline-danger" style="font-size: 0.8rem;">🔄 リセット</button>
+                    </div>
+                </div>
+                
+                <!-- クイズエリア -->
+                <div id="quiz-container">
+                    <div class="mb-2">
+                        <span id="category-badge" class="badge bg-primary px-3 py-2 rounded-pill shadow-sm"></span>
+                    </div>
+                    <p id="question-text" class="fs-5 mb-4 fw-bold">読み込み中...</p>
+                    
+                    <div id="choices-container">
+                        <!-- 選択肢がJavaScriptで生成されます -->
+                    </div>
+                    
+                    <!-- 結果表示・解説エリア -->
+                    <div id="result-container" class="mt-4 text-center">
+                        <p id="result-message" class="mb-2"></p>
+                        
+                        <div id="explanation-container" class="card bg-light text-start p-3 mb-3 d-none border-0">
+                            <h6 class="fw-bold mb-2">💡 解説</h6>
+                            <p id="explanation-text" class="small mb-2 text-secondary"></p>
+                            <div>
+                                <a id="explanation-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
+                                    詳細ページを開く ↗
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- アクションボタンエリア -->
+                        <div class="d-flex justify-content-center gap-2 mt-3">
+                            <button id="review-later-btn" class="btn btn-outline-warning d-none">⭐ 後で見直す</button>
+                            <button id="next-btn" class="btn btn-primary px-4 d-none">次の問題へ</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 完了画面 -->
+                <div id="completion-container" class="text-center d-none py-4">
+                    <h3 class="text-success mb-3">全問クリア！</h3>
+                    <p class="text-muted mb-4">お疲れ様でした。</p>
+                    
+                    <!-- 一発正解数の表示パネル -->
+                    <div class="card bg-light border-0 mb-4 mx-auto shadow-sm" style="max-width: 300px;">
+                        <div class="card-body">
+                            <h5 class="card-title text-secondary fs-6">一発正解数</h5>
+                            <p class="display-4 mb-0 text-primary fw-bold">
+                                <span id="first-try-count-display">0</span><span class="fs-4 text-muted fw-normal"> / <span id="total-questions-display">0</span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ボタンエリア -->
+                    <div class="d-grid gap-2 col-10 mx-auto">
+                        <button id="retry-missed-btn" onclick="retryMissedQuestions()" class="btn btn-danger fw-bold d-none">
+                            ⚠️ 不正解だった問題に再チャレンジ
+                        </button>
+                        <button id="retry-review-btn" onclick="retryReviewQuestions()" class="btn btn-warning text-dark fw-bold d-none">
+                            ⭐ 「後で見直す」問題にチャレンジ
+                        </button>
+                        <button onclick="initQuiz(true)" class="btn btn-outline-primary">
+                            最初からすべてやり直す
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const originalQuizData = [
+            //-------------------------------------
+            //    マネジメント
+            //-------------------------------------
+
+            {
+                category: "マネジメント",
+                question: "システムに求められる機能や性能、内容などを明らかにする開発プロセス（開発工程）。",
+                choices: ["システム要件定義", "システム設計", "プログラミング", "テスト"],
+                correctIndex: 0,
+                explanation: "「システム要件定義」では、そのシステムに欲しい機能や性能などを、実際にそのシステムを使うお客様と話し合いながらまとめていきます。",
+                explanationUrl: "https://wa3.i-3-i.info/word111320.html"
+            },
+            {
+                category: "マネジメント",
+                question: "システムを利用するお客様と開発者の間で、要件定義の内容がお客様の要求を満たしているかを確認するために行うことは？",
+                choices: ["結合テスト", "シミュレーション", "進捗会議", "共同レビュー"],
+                correctIndex: 4,
+                explanation: "「共同レビュー」とは、お客様と開発者が一緒になって内容が正しいかどうか確認することです。（レビューとは、作成されたものが正しいか内容をチェックすること）",
+                explanation: "「レビュー」とは、作成されたものが正しいか内容をチェックすることです。",
+                explanationUrl: "https://wa3.i-3-i.info/word1516.html"
+            },
+            {
+                category: "マネジメント",
+                question: "画面のレイアウトや操作手順、印刷される帳票のフォーマットなど、「利用者から見える外側の部分（ユーザーインターフェース）」の仕様を決める工程",
+                choices: ["システム要件定義", "外部設計", "内部設計", "プログラミング"],
+                correctIndex: 1,
+                explanation: "「外部設計」とは、画面レイアウトなど、利用者から見える外側の部分の設計です。実際にそのシステムを使う利用者の意見を聞きながら設計します。",
+                explanationUrl: "https://wa3.i-3-i.info/word13719.html"
+            },
+            {
+                category: "マネジメント",
+                question: "データベースの構造やプログラムの処理手順など、開発者側からしか見えない「システムの内側の仕組み」を設計する工程",
+                choices: ["システム要件定義", "システム方式設計", "外部設計", "内部設計"],
+                correctIndex: 3,
+                explanation: "「内部設計」とは、データベースの構造やプログラムの流れなど、利用者から見えない内部の機能を開発者だけで設計する作業です。画面レイアウトなどの外部設計をもとに行います。",
+                explanationUrl: "https://wa3.i-3-i.info/word13720.html"
+            },
+            {
+                category: "マネジメント",
+                question: "内部設計で行うことはどれか。",
+                choices: ["システムの使い方を決める", "画面レイアウトや印刷フォーマットを決める", "データベースの構造を決める", "性能の目標値を決める"],
+                correctIndex: 2,
+                explanation: "「内部設計」では、データベースの構造やプログラムの処理手順など、お客様からは見えない内部の設計を行います。開発者だけで設計することができます。",
+                explanationUrl: "https://hnavi.co.jp/knowledge/blog/external_design/"
+            },
+            {
+                category: "マネジメント",
+                question: "システム開発の設計工程において「どの部分をハードウェア（機器）で処理し、どの部分をソフトウェア（プログラム）で処理し、どの部分を人間の手作業で行うか」を振り分ける工程",
+                choices: ["運用テスト", "システム方式設計", "ソフトウェア導入", "ソフトウェア要件定義"],
+                correctIndex: 1,
+                explanation: "「システム方式設計」では、そのシステムをどうやって作るか（方式）を設計します。具体的には、必要な機能を「ハードウェアで実現する部分」「ソフトウェアで実現する部分」「手作業で行う部分」のどれに任せるかを明確にします。",
+                explanationUrl: "https://e-words.jp/w/%E3%82%B7%E3%82%B9%E3%83%86%E3%83%A0%E6%96%B9%E5%BC%8F%E8%A8%AD%E8%A8%88.html"
+            },
+            {
+                category: "マネジメント",
+                question: "プログラムの内部構造に着目して、アルゴリズムの通りにプログラムが動くか確認するテスト手法",
+                choices: ["ホワイトボックステスト", "ブラックボックステスト", "結合テスト", "システムテスト"],
+                correctIndex: 0,
+                explanation: "「ホワイトボックステスト」とは、プログラムの中身がどうなっているかに着目して、プログラム内の処理が（一行ずつ）正しく動いているか確認するテストです。",
+                explanationUrl: "https://wa3.i-3-i.info/word13078.html"
+            },
+            {
+                category: "マネジメント",
+                question: "入力と出力だけに着目し、機能が仕様書通りであるかを確認するテスト",
+                choices: ["単体テスト", "受け入れテスト", "ホワイトボックステスト", "ブラックボックステスト手法"],
+                correctIndex: 3,
+                explanation: "「ブラックボックステスト」とは、プログラムの入力と出力だけに着目したテストです。内部でどのような処理が行われているかは気にせず、出力された結果が正しいかどうかだけ確認します。",
+                explanationUrl: "https://wa3.i-3-i.info/word13077.html"
+            },
+            {
+                category: "マネジメント",
+                question: "以下のテストのうち、主にホワイトボックステストを用いてプログラム内部の動きを一行ずつ網羅的に確認するテスト工程。",
+                choices: ["単体テスト", "結合テスト", "システムテスト", "受入テスト"],
+                correctIndex: 0,
+                explanation: "「単体テスト」とは、「登録機能」「検索機能」「表示機能」のように、単体の機能がきちんと動作するか確認するテストです。主にホワイトボックステストが用いられます。",
+                explanationUrl: "https://wa3.i-3-i.info/word15916.html"
+            },
+            {
+                category: "マネジメント",
+                question: "以下のテストのうち、ソフトウェア間のインターフェースを確認するテスト工程。",
+                choices: ["単体テスト", "結合テスト", "システムテスト", "受入テスト"],
+                correctIndex: 1,
+                explanation: "「結合テスト」とは、単体テストで作った「登録機能」「検索機能」などの機能を「結合」して、1つのシステムとして動作するか確認するテストです。Aさんが作った機能と、Bさんが作った機能を組み合わせてきちんと動くかどうかテストするイメージです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15917.html"
+            },
+            {
+                category: "マネジメント",
+                question: "以下のテストのうち、処理スピードなどの性能が問題ないかなどを確認するテスト工程は？",
+                choices: ["単体テスト", "結合テスト", "システムテスト", "受入テスト"],
+                correctIndex: 2,
+                explanation: "「システムテスト」（総合テスト）とは、結合テストで動くようになったシステムに対して、全体の性能（処理スピード、大量のデータへの耐久性など）や全体の機能を確認するテストです。システムの卒業試験のようなものです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15915.html"
+            },
+            {
+                category: "マネジメント",
+                question: "システムに対して、実際に攻撃して侵入を試みることで、セキュリティ上の弱点を発見するテストは？",
+                choices: ["ペネトレーションテスト", "ストレステスト", "ベンチマークテスト", "リグレッションテスト"],
+                correctIndex: 0,
+                explanation: "「ペネトレーションテスト」（Penetration＝侵入・貫通）とは、セキュリティの専門家が実際に攻撃して、侵入できる隙が無いかどうかを確認するテストです。侵入テストとも呼ばれます。",
+                explanationUrl: "https://wa3.i-3-i.info/word13552.html"
+            },
+            {
+                category: "マネジメント",
+                question: "開発が完了したソフトウェアを実際の業務で使用できるように、本番環境にインストールする工程。",
+                choices: ["ソフトウェア結合", "ソフトウェア導入", "妥当性検証", "利用者教育"],
+                correctIndex: 1,
+                explanation: "「ソフトウェア導入」とは、新しいソフトウェアを実際の業務で使用できるように、本番環境にインストール、データ移行、利用者教育などを行うことです。",
+                explanationUrl: "https://buralog.jp/dictionary/it/term-09599.html"
+            },
+            {
+                category: "マネジメント",
+                question: "本番稼働後に業務がスムーズに行えるように、システムの利用方法を示した文書。",
+                choices: ["FAQ", "サービスレベル合意書", "システム要件定義書", "利用者マニュアル"],
+                correctIndex: 3,
+                explanation: "「利用者マニュアル」とは、いわゆる「取扱説明書」です。システムの使い方やトラブル時の対応方法などが書かれています。",
+                explanationUrl: "https://wa3.i-3-i.info/word111315.html"
+            },
+            {
+                category: "マネジメント",
+                question: "不具合の修正や機能の改善等を目的として、本番稼働後に行われるプログラムの修正作業。",
+                question: "本番稼働後に、バグの修正や機能の改善のために行われるプログラムの修正作業",
+                choices: ["運用テスト", "ソフトウェア保守", "システム監査", "システム要件定義"],
+                correctIndex: 1,
+                explanation: "「ソフトウェア保守」とは、システムが完成して現場に導入された「後」に行われる、バグ修正やアップデートの作業全般を指します。",
+                explanationUrl: "https://wa3.i-3-i.info/word112477.html"
+            },
+            {
+                category: "マネジメント",
+                question: "画面の数やファイルの数など、ソフトウェアが持つ機能の数をもとに、開発規模を見積もる手法。",
+                choices: ["類推見積法", "積み上げ法", "ファンクションポイント法", "プログラムステップ法"],
+                correctIndex: 2,
+                explanation: "「ファンクションポイント法」（Function=機能）とは、システムの「機能」の数（ログイン画面、検索機能、印刷機能）や画面の数をもとにして、全体の規模を見積もる手法です。",
+                explanationUrl: "https://wa3.i-3-i.info/word16039.html"
+            },
+            {
+                category: "マネジメント",
+                question: "「クラス」や「継承」という概念を利用して、ソフトウェアを部品化したり再利用することで、ソフトウェア開発の生産性向上を図る手法",
+                choices: ["オブジェクト指向", "構造化", "プロセス中心アプローチ", "プロトタイピング"],
+                correctIndex: 0,
+                explanation: "「オブジェクト指向プログラミング」とは、Javaでいう「クラス」を使用したプログラミング手法です。データ（フィールド変数）と処理（メソッド）とをセットにした「モノ」（オブジェクト）を中心にプログラムを組み立てる手法です。Java, C#, Pythonなど現在の多くのプログラミング言語がこの考え方を採用しています。",
+                explanationUrl: "https://wa3.i-3-i.info/word1898.html"
+            },
+            {
+                category: "マネジメント",
+                question: "「開発担当者」と「運用担当者」が密接に連携し、自動化ツールなどを活用して機能の導入や更新を迅速に進める取り組み。",
+                choices: ["RAD", "SOA", "DevOps", "WBS"],
+                correctIndex: 2,
+                explanation: "「DevOps」とは、開発側（Development）と、運用側（Operations）が互いに協力して、自動化ツールなどを使って機能追加からリリースまでをスピーディに行う取り組みのことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word15387.html"
+            },
+            {
+                category: "マネジメント",
+                question: "「要件定義」「設計」「プログラミング」「テスト」の順で、上流工程から下流工程へ順を追って開発するスタイル。",
+                choices: ["ウォーターフォール", "プロトタイピング", "アジャイル開発", "スパイラル"],
+                correctIndex: 0,
+                explanation: "「ウォーターフォールモデル」とは、滝の水が上から下へ落ちるように、上流工程から下流工程へ順に進めていく開発手法です。",
+                explanationUrl: "https://wa3.i-3-i.info/word15832.html"
+            },
+            {
+                category: "マネジメント",
+                question: "システム開発の早い段階で試作品を作成し、ユーザーに実際に画面などを操作してもらいながら進める開発モデル",
+                choices: ["アジャイル", "ウォーターフォール", "スパイラル", "プロトタイピング"],
+                correctIndex: 3,
+                explanation: "「プロトタイピングモデル」（Prototype＝試作品）とは、開発の早い段階で「試作品」を作ってユーザーに試してもらう開発モデルです。ユーザーの「こんなはずじゃなかった」を防ぐための手法です。",
+                explanationUrl: "https://wa3.i-3-i.info/word110672.html"
+            },
+            {
+                category: "マネジメント",
+                question: "開発する機能を小さい単位に分割して、優先度の高いものから短期間で開発とリリースを繰り返す開発モデル。",
+                choices: ["ウォーターフォール", "アジャイル", "プロトタイピング", "リファクタリング"],
+                correctIndex: 1,
+                explanation: "「アジャイル開発」とは、システム全体を一度に作るのではなく、小さな機能ごとに「開発～リリース」を繰り返す開発モデルです。",
+                explanationUrl: "https://wa3.i-3-i.info/word110436.html"
+            },
+            {
+                category: "マネジメント",
+                question: "プログラムの機能や仕様は変えずに、中身のソースコードを読みやすいように改善したり、修正しやすい構造に書き直すこと",
+                choices: ["デバッグ", "リバースエンジニアリング", "リファクタリング", "リグレッションテスト"],
+                correctIndex: 2,
+                explanation: "「リファクタリング」とは、すでに正しく動いているプログラムに対して、機能は変えずに、中身のコードを整理整頓して「美しく・後から読みやすく」書き直す作業のことです。",
+                explanationUrl: "https://wa3.i-3-i.info/word1494.html"
+            },
+            {
+                category: "マネジメント",
+                question: "プロジェクトマネジメントにおいて、プロジェクトの「作るべきもの（成果物）」「必要な作業」を管理すること。",
+                choices: ["プロジェクトコミュニケーションマネジメント", "プロジェクトコストマネジメント", "プロジェクトスコープマネジメント", "プロジェクトタイムマネジメント"],
+                correctIndex: 2,
+                explanation: "「プロジェクトスコープマネジメント」（Scope=範囲）とは、プロジェクトで「やること」と「やらないこと」の範囲を管理することです。後から予定外の作業が勝手に追加されないようにします。",
+                explanationUrl: "https://wa3.i-3-i.info/word15696.html"
+            },
+            // WBS
+            {
+                category: "マネジメント",
+                question: "計画を立てる際に用いられる手法であり,プロジェクトチームが実行する作業を細かい作業に分割し、階層化した図で表すものはどれか。",
+                choices: ["WBS", "DFD", "アローダイアグラム", "マイルストーンチャート"],
+                correctIndex: 0,
+                explanation: "「WBS」（Work Breakdown Structure）とは、やらなければならない作業を細かく分解し、階層的な図で表したものです。「作業分解図」とも言われます。",
+                explanationUrl: "https://ero-ben.com/itpass-study-72/"
+            },
+
+        ];
+
+        // 状態管理
+        let queueIndices = [];       
+        let attemptedIndices = [];   
+        let firstTryCorrectCount = 0;
+        let missedFirstTryIndices = []; 
+        let reviewLaterIndices = []; 
+        let currentQuestion = null;
+        let currentQuestionIndex = null; 
+
+        // --- Cookie操作 ---
+        const COOKIE_NAME = "quiz_progress_ipass_tech07";
+
+        function saveProgressToCookie() {
+            const expires = new Date(Date.now() + 30 * 86400000).toUTCString();
+            const saveData = {
+                queue: queueIndices,
+                attempted: attemptedIndices,
+                firstTryCount: firstTryCorrectCount,
+                missedFirstTry: missedFirstTryIndices,
+                reviewLater: reviewLaterIndices
+            };
+            document.cookie = `${COOKIE_NAME}=${JSON.stringify(saveData)}; expires=${expires}; path=/`;
+        }
+
+        function loadProgressFromCookie() {
+            const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]+)`));
+            if (match) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (Array.isArray(parsed)) {
+                        return { queue: parsed, attempted: [], firstTryCount: 0, missedFirstTry: [], reviewLater: [] };
+                    }
+                    return parsed;
+                } catch (e) {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${COOKIE_NAME}=; max-age=0; path=/`;
+        }
+
+        // --- DOM要素 ---
+        const progressBadge = document.getElementById("progress-badge");
+        const categoryBadge = document.getElementById("category-badge");
+        const questionText = document.getElementById("question-text");
+        const choicesContainer = document.getElementById("choices-container");
+        const resultMessage = document.getElementById("result-message");
+        const nextBtn = document.getElementById("next-btn");
+        const reviewLaterBtn = document.getElementById("review-later-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const quizContainer = document.getElementById("quiz-container");
+        
+        const completionContainer = document.getElementById("completion-container");
+        const firstTryCountDisplay = document.getElementById("first-try-count-display");
+        const totalQuestionsDisplay = document.getElementById("total-questions-display");
+        const retryMissedBtn = document.getElementById("retry-missed-btn");
+        const retryReviewBtn = document.getElementById("retry-review-btn");
+        
+        const explanationContainer = document.getElementById("explanation-container");
+        const explanationText = document.getElementById("explanation-text");
+        const explanationLink = document.getElementById("explanation-link");
+
+        // --- 初期化処理 ---
+        function initQuiz(forceReset = false) {
+            if (forceReset) {
+                clearProgressCookie();
+                queueIndices = null;
+            }
+
+            const savedData = loadProgressFromCookie();
+            const isValidSave = savedData && 
+                                Array.isArray(savedData.queue) &&
+                                savedData.queue.every(idx => idx >= 0 && idx < originalQuizData.length);
+
+            // 【変更点】savedData.queue.length > 0 の条件を削除。
+            // 残り0問（クリア状態）のデータでも有効なセーブデータとして読み込むようにしました。
+            if (!forceReset && isValidSave) {
+                queueIndices = savedData.queue;
+                attemptedIndices = savedData.attempted || [];
+                firstTryCorrectCount = savedData.firstTryCount || 0;
+                missedFirstTryIndices = savedData.missedFirstTry || [];
+                reviewLaterIndices = savedData.reviewLater || [];
+            } else {
+                queueIndices = originalQuizData.map((_, index) => index);
+                attemptedIndices = [];
+                firstTryCorrectCount = 0;
+                missedFirstTryIndices = [];
+                reviewLaterIndices = [];
+            }
+
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 不正解問題への再挑戦 ---
+        function retryMissedQuestions() {
+            queueIndices = [...missedFirstTryIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 「後で見直す」問題への再挑戦 ---
+        function retryReviewQuestions() {
+            queueIndices = [...reviewLaterIndices];
+            
+            attemptedIndices = [];
+            firstTryCorrectCount = 0;
+            missedFirstTryIndices = [];
+            
+            saveProgressToCookie();
+            
+            quizContainer.classList.remove("d-none");
+            completionContainer.classList.add("d-none");
+            resetBtn.style.display = "inline-block";
+            
+            loadNextQuestion();
+        }
+
+        // --- 問題読み込み ---
+        function loadNextQuestion() {
+            if (queueIndices.length === 0) {
+                // 【変更点】クリア時に clearProgressCookie() を呼ばないようにし、クリア状態を保存する
+                saveProgressToCookie(); 
+
+                quizContainer.classList.add("d-none");
+                completionContainer.classList.remove("d-none");
+                progressBadge.textContent = "クリア！";
+                resetBtn.style.display = "none";
+                
+                const currentSessionTotal = firstTryCorrectCount + missedFirstTryIndices.length;
+                firstTryCountDisplay.textContent = firstTryCorrectCount;
+                totalQuestionsDisplay.textContent = currentSessionTotal;
+
+                if (missedFirstTryIndices.length > 0) {
+                    retryMissedBtn.classList.remove("d-none");
+                } else {
+                    retryMissedBtn.classList.add("d-none");
+                }
+
+                if (reviewLaterIndices.length > 0) {
+                    retryReviewBtn.textContent = `⭐ 「後で見直す」問題にチャレンジ (${reviewLaterIndices.length}問)`;
+                    retryReviewBtn.classList.remove("d-none");
+                } else {
+                    retryReviewBtn.classList.add("d-none");
+                }
+                
+                return;
+            }
+
+            currentQuestionIndex = queueIndices[0];
+            currentQuestion = originalQuizData[currentQuestionIndex];
+
+            progressBadge.textContent = `残り ${queueIndices.length} 問`;
+            categoryBadge.textContent = currentQuestion.category;
+            questionText.textContent = currentQuestion.question;
+            choicesContainer.innerHTML = "";
+            resultMessage.style.display = "none";
+            explanationContainer.classList.add("d-none");
+            nextBtn.classList.add("d-none");
+            reviewLaterBtn.classList.add("d-none");
+
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            } else {
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            }
+
+            currentQuestion.choices.forEach((choice, index) => {
+                const button = document.createElement("button");
+                button.textContent = choice;
+                button.className = "btn btn-outline-secondary choice-btn p-3";
+                button.onclick = () => checkAnswer(index, button);
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // --- 解答チェック ---
+        function checkAnswer(selectedIndex, clickedButton) {
+            const buttons = choicesContainer.querySelectorAll("button");
+            buttons.forEach(btn => btn.disabled = true);
+
+            const answeredIndex = queueIndices.shift(); 
+            
+            const isFirstTry = !attemptedIndices.includes(answeredIndex);
+            if (isFirstTry) {
+                attemptedIndices.push(answeredIndex);
+            }
+            
+            resultMessage.style.display = "block";
+
+            if (selectedIndex === currentQuestion.correctIndex) {
+                if (isFirstTry) {
+                    firstTryCorrectCount++;
+                }
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-success", "text-white");
+                resultMessage.textContent = "⭕ 正解！";
+                resultMessage.className = "text-success mb-2";
+            } else {
+                if (isFirstTry) {
+                    missedFirstTryIndices.push(answeredIndex);
+                }
+                
+                queueIndices.push(answeredIndex);
+
+                clickedButton.classList.remove("btn-outline-secondary");
+                clickedButton.classList.add("btn-danger", "text-white");
+                buttons[currentQuestion.correctIndex].classList.remove("btn-outline-secondary");
+                buttons[currentQuestion.correctIndex].classList.add("btn-success", "text-white");
+
+                resultMessage.textContent = "❌ 不正解... (後で再出題されます)";
+                resultMessage.className = "text-danger mb-2";
+            }
+
+            saveProgressToCookie();
+
+            if (currentQuestion.explanation) {
+                explanationText.textContent = currentQuestion.explanation;
+                if (currentQuestion.explanationUrl) {
+                    explanationLink.href = currentQuestion.explanationUrl;
+                    explanationLink.classList.remove("d-none");
+                } else {
+                    explanationLink.classList.add("d-none");
+                }
+                explanationContainer.classList.remove("d-none");
+            }
+
+            nextBtn.classList.remove("d-none");
+            reviewLaterBtn.classList.remove("d-none");
+        }
+
+        // --- 「後で見直す」ボタンのクリック処理（トグル機能） ---
+        reviewLaterBtn.addEventListener("click", () => {
+            if (reviewLaterIndices.includes(currentQuestionIndex)) {
+                reviewLaterIndices = reviewLaterIndices.filter(index => index !== currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-warning", "btn-outline-warning");
+                reviewLaterBtn.textContent = "⭐ 後で見直す";
+            } else {
+                reviewLaterIndices.push(currentQuestionIndex);
+                saveProgressToCookie();
+                
+                reviewLaterBtn.classList.replace("btn-outline-warning", "btn-warning");
+                reviewLaterBtn.textContent = "⭐ 見直しリストに登録済み";
+            }
+        });
+
+        // --- リセット処理 ---
+        resetBtn.addEventListener("click", () => {
+            if (confirm("これまでの解答状況をリセットして、最初からやり直しますか？")) {
+                initQuiz(true);
+            }
+        });
+
+        // イベント設定
+        nextBtn.addEventListener("click", loadNextQuestion);
+        window.onload = () => initQuiz(false);
+    </script>
+</body>
+</html>
